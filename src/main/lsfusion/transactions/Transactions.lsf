@@ -1,0 +1,168 @@
+MODULE Transactions;
+
+REQUIRE SelfUser, Account, Category;
+
+CLASS Transaction;
+account  = DATA Account (Transaction);
+category = DATA Category (Transaction);
+amount 'Количество' = DATA LONG (Transaction);
+createdAt 'Создано в' = DATA DATETIME (Transaction);
+user = DATA SelfUser (Transaction);
+
+type = DATA TransactionType (Transaction);
+
+id(Transaction t) = LONG (t AS Transaction);
+transactionById(LONG id) = GROUP LAST Transaction t IF id(t) == id ORDER t;
+
+CONSTRAINT amount(Transaction t) <= 0 MESSAGE 'Сумма должна быть больше 0';
+
+
+CONSTRAINT Transaction t IS Transaction AND NOT (type(t) AND  account(t)
+    AND amount(t) AND category(t)) MESSAGE 'пожалуйста, заполните все поля';
+//CONSTRAINT Transaction t IS Transaction AND amount(t) > balance(account(t)) AND type(t) == TransactionType.expense
+//    MESSAGE 'На счете недостаточно средств для совершения этой транзакции.'; 
+
+FORM transactions 'Транзакции'
+    OBJECTS t = Transaction
+    PROPERTIES READONLY createdAt = createdAt(t), 
+    name 'Название аккаунта' = name(account(t)), category 'Название категории' = name(category(t)), 
+    amount = amount(t), type 'Тип транзакции' = typeName(type(t))
+    PROPERTIES(t) NEWSESSION NEW, EDIT, DELETE
+    ORDERS createdAt DESC
+    
+    FILTERS user(t) == currentUser()
+;
+
+FORM transaction 'Транзакция'
+    OBJECTS t = Transaction PANEL
+    PROPERTIES name 'Название аккаунта' = name(account(t)) ON CHANGE {
+            DIALOG accounts OBJECTS a = account(t) CHANGE LIST name(a);
+        }, 
+        amount = amount(t), 
+        type 'Тип транзакции' = typeName(type(t)),
+        category 'Название категории' = name(category(t)) ON CHANGE {
+            DIALOG UserCategories OBJECTS c = category(t) CHANGE LIST name(c);
+        } READONLYIF NOT type(t)
+    
+    EDIT Transaction OBJECT t
+;
+
+WHEN LOCAL SETCHANGED(type(Transaction t)) DO {
+    categoryType() <- type(t);
+}
+
+WHEN SET(Transaction t IS Transaction) DO {
+    createdAt(t) <-  currentDateTime();
+    user(t) <- currentUser();
+     IF type(t) == TransactionType.expense THEN {
+        balance(account(t)) <- balance(account(t)) (-) amount(t);
+    }ELSE {
+        balance(account(t)) <- balance(account(t)) (+) amount(t);
+    }
+}
+
+WHEN DROPPED(Transaction t IS Transaction) DO {
+    IF PREV(type(t)) == TransactionType.expense THEN {
+        balance(PREV(account(t))) <- balance(PREV(account(t))) (+) PREV(amount(t));
+    }ELSE IF PREV(type(t)) == TransactionType.income THEN {
+        balance(PREV(account(t))) <- balance(PREV(account(t))) (-) PREV(amount(t));
+    }
+}
+
+WHEN (CHANGED(account(Transaction t)) OR 
+    CHANGED(amount(t)) OR
+    CHANGED(type(t))) AND NOT DROPPED(t IS Transaction) AND NOT SET(t IS Transaction)
+    DO {
+    // first reverting money.
+    IF PREV(type(t)) == TransactionType.expense THEN {
+        balance(PREV(account(t))) <- balance(PREV(account(t))) (+) PREV(amount(t));
+    }ELSE IF type(t) == TransactionType.income THEN {
+        balance(PREV(account(t))) <- balance(PREV(account(t))) (-) PREV(amount(t));
+    }
+
+    // Now we reupdate accounts. they are resetted and we  change them now.
+    IF type(t) == TransactionType.expense THEN {
+        balance(account(t)) <- balance(account(t)) (-) amount(t);
+    }ELSE {
+        balance(account(t)) <- balance(account(t)) (+) amount(t);
+    }
+}
+
+
+
+CLASS RecurringTransactions;
+description = DATA STRING (RecurringTransactions);
+user = DATA SelfUser (RecurringTransactions);
+category = DATA Category (RecurringTransactions) NONULL;
+amount = DATA LONG (RecurringTransactions) NONULL;
+account = DATA Account (RecurringTransactions) NONULL;
+type = DATA TransactionType (RecurringTransactions) NONULL;
+createdAt = DATA DATE (RecurringTransactions);
+nextDate = DATA DATE (RecurringTransactions) NONULL;
+lastAttempt = DATA DATE (RecurringTransactions);
+firstDate = DATA DATE (RecurringTransactions);
+
+id (RecurringTransactions r) = LONG (r AS RecurringTransactions);
+recurringTransactionById(LONG id) = GROUP LAST RecurringTransactions r IF id(r) == id ORDER r;
+
+CLASS Frequency {
+    daily 'Ежедневно',
+    weekly 'Еженедельно', 
+    monthly 'Ежемесячно',
+    yearly 'Ежегодно'
+}
+
+frequency = DATA LOCAL Frequency();
+getFrequency(STRING name) {
+    IF name == 'daily' THEN {
+        frequency() <- Frequency.daily;
+    }ELSE IF name == 'weekly' THEN {
+        frequency() <- Frequency.weekly;
+    }ELSE IF name == 'monthly' THEN {
+        frequency() <- Frequency.monthly;
+    }ELSE IF name == 'yearly' THEN {
+        frequency() <- Frequency.yearly;
+    }
+}
+
+getFrequencyName(Frequency f) = staticCaption(f);
+frequency = DATA Frequency(RecurringTransactions) NONULL;
+
+CONSTRAINT RecurringTransactions r IS RecurringTransactions AND nextDate(r) < currentDate() 
+    MESSAGE 'Дата Транзакция происходит не может быть меньше текущей даты';
+
+FORM recurringTransactions 'Повторяющиеся транзакции'
+    OBJECTS r = RecurringTransactions
+    PROPERTIES READONLY title 'описание' = description(r), type 'тип' = typeName(type(r)), categoryName 'Категория' = name(category(r)), 
+    amount 'Сумма' = amount(r), accountName 'Счет' = name(account(r)), 
+    frequencyName 'Периодичность' = getFrequencyName(frequency(r)), nextDate 'Транзакция происходит в этот день.' = nextDate(r)
+    PROPERTIES(r) NEWSESSION NEW, EDIT, DELETE
+    
+    FILTERS user(r) == currentUser()
+;
+
+FORM recurringTransaction 'Повторяющаяся транзакция' 
+    OBJECTS r = RecurringTransactions PANEL
+    PROPERTIES title 'описание' = description(r), 
+        type 'тип' = typeName(type(r)),
+        categoryName 'Категория' = name(category(r)) ON CHANGE {
+            DIALOG UserCategories OBJECTS c = category(r) CHANGE LIST name(c);
+        } READONLYIF NOT type(r),
+        amount 'Сумма' = amount(r), accountName 'Счет' = name(account(r)) ON CHANGE {
+            DIALOG accounts OBJECTS a = account(r) CHANGE LIST name(a);
+        },
+    frequencyName 'Периодичность' = getFrequencyName(frequency(r)),
+        nextDate 'Транзакция происходит в этот день.' = nextDate(r)
+    EDIT RecurringTransactions OBJECT r
+;
+
+WHEN LOCAL SETCHANGED(type(RecurringTransactions t)) DO {
+    categoryType() <- type(t);
+}
+
+WHEN SET(RecurringTransactions r IS RecurringTransactions) DO {
+    user(r) <- currentUser();
+    createdAt(r) <- currentDate();
+    firstDate(r) <- nextDate(r);
+}
+

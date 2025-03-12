@@ -1,0 +1,28 @@
+MODULE NotificationApi;
+
+REQUIRE Notification, UtilResponse;
+
+notification = DATA LOCAL Notification();
+
+FORM getAllNotificationsResponse
+    OBJECTS data = Notification
+    PROPERTIES(data) id, createdAt, message
+    FILTERS user(data) == currentUser()
+;
+
+getAllNotifications() {
+    EXPORT getAllNotificationsResponse JSON;
+} @@api;
+
+
+deleteNotification(LONG id) {
+    notification() <- notificationById(id);
+    IF NOT notification() THEN {
+        returnError(104);
+        RETURN;
+    }
+    
+    DELETE notification();
+    APPLY ;
+    returnSuccessResponse();
+} @@api;

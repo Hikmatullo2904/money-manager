@@ -1,0 +1,161 @@
+MODULE AccountApi;
+
+REQUIRE Account, UtilResponse, SelfUser, Currency;
+
+name = DATA LOCAL STRING();
+balance = DATA LOCAL LONG();
+currencyId = DATA LOCAL LONG ();
+id = DATA LOCAL LONG();
+
+addAccount(FILE f) {
+    IMPORT JSON FROM f TO() name, balance, currencyId;
+    
+    IF NOT name() THEN {
+        returnError(405);
+        RETURN;
+    }
+    
+    IF findByName(name(), currentUser() AS SelfUser) THEN {
+        returnError(302);
+        RETURN;
+    }
+    
+    IF balance() <= 0 THEN {
+        returnError(307);
+        RETURN ;
+    }
+    
+    IF NOT currencyId() THEN {
+        currency() <- currency(currentUser() AS SelfUser);
+    }ELSE {
+        currency() <- currencyById(currencyId());
+    }
+    IF NOT currency() THEN {
+        returnError(310);
+        RETURN;
+    }
+    
+    NEW a = Account {
+        name(a) <- name();
+        balance(a) <- balance();
+        currency(a) <- currency();
+        user(a) <- currentUser();
+    }
+    
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+ 
+updateAccount(FILE f) {
+    IMPORT JSON FROM f TO() id, name, balance, currencyId;
+
+    account() <- accountById(id(), currentUser() AS SelfUser);
+    IF NOT account() THEN {
+        returnError(304);
+        RETURN;
+    }
+
+
+    IF NOT name() THEN {
+        returnError(405);
+        RETURN;
+    }
+    account() <- findByName(name(), currentUser() AS SelfUser);
+    IF account() AND account() != accountById(id()) THEN {
+        returnError(302);
+        RETURN;
+    }
+
+    IF balance() <= 0 THEN {
+        returnError(307);
+        RETURN ;
+    }
+    
+    IF NOT currencyId() THEN {
+        currency() <- currency(currentUser() AS SelfUser);
+    }ELSE {
+        currency() <- currencyById(currencyId());
+    }
+    
+    account() <- account();
+    name(account()) <- name();
+    balance(account()) <- balance();
+    currency(account()) <- currency();
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+deleteAccount(LONG id) {
+    account() <- accountById(id, currentUser() AS SelfUser);
+    IF NOT account() THEN {
+        returnError(304);
+        RETURN;
+    }
+    IF user(account()) != currentUser() THEN {
+        returnError(303);
+        RETURN;
+    }
+    isDeleted(account()) <- TRUE;
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+FORM getAllAccountsResponse
+    OBJECTS data = Account
+    PROPERTIES(data) id, name, balance
+    PROPERTIES currency = getCurrencyName(currency(data))
+    FILTERS user(data) == currentUser() AND NOT isDeleted(data)
+;
+
+getAccounts() {
+    EXPORT getAllAccountsResponse JSON;
+}@@api;
+
+accountFrom = DATA LOCAL LONG();
+accountTo = DATA LOCAL LONG();
+amount = DATA LOCAL LONG();
+exchangeRate = DATA LOCAL LONG();
+
+transferMoney(FILE f) {
+    IMPORT JSON FROM f TO() accountFrom, accountTo, amount, exchangeRate;
+    IF NOT (accountFrom() AND accountTo() AND amount()) THEN {
+        returnError(405);
+        RETURN;
+    }
+    LOCAL sourceAccount = Account();
+    LOCAL targetAccount = Account();
+    sourceAccount() <- accountById(accountFrom(), currentUser() AS SelfUser);
+    IF NOT sourceAccount() OR user(sourceAccount()) != currentUser() THEN {
+        returnError(304);
+        RETURN;
+    }
+
+    targetAccount() <- accountById(accountTo(), currentUser() AS SelfUser);
+    IF NOT targetAccount() OR user(targetAccount()) != currentUser() THEN {
+        returnError(304);
+        RETURN;
+    }
+    
+    IF balance(sourceAccount()) < amount() THEN {
+        returnError(307);
+        RETURN ;
+    }
+    
+    LOCAL finalAmount = LONG ();
+    finalAmount() <- amount();
+    IF currency(targetAccount()) != currency(sourceAccount()) THEN {
+        IF NOT exchangeRate() THEN {
+            returnError(308);
+            RETURN;
+        }ELSE IF exchangeRate() <= 0 THEN {
+            returnError(309);
+            RETURN;
+        }
+        finalAmount() <- amount() * exchangeRate();
+    }
+    balance(sourceAccount()) <- balance(sourceAccount()) (-) amount();
+    balance(targetAccount()) <- balance(targetAccount()) (+) finalAmount();
+    
+    APPLY ;
+    returnSuccessResponse();
+}@@api;

@@ -1,0 +1,19 @@
+MODULE Notification;
+
+REQUIRE SelfUser;
+
+CLASS Notification;
+createdAt 'Дата создания' = DATA DATE(Notification);
+message 'Описание' = DATA TEXT (Notification);
+user = DATA SelfUser(Notification);
+
+id(Notification n) = LONG (n AS Notification);
+notificationById(LONG id) = GROUP LAST Notification n IF id(n) == id ORDER n;
+
+FORM notifications
+    OBJECTS n = Notification
+    PROPERTIES(n) createdAt, message
+    PROPERTIES(n) NEWSESSION DELETE
+    
+    FILTERS user(n) == currentUser();
+;

@@ -1,0 +1,52 @@
+MODULE RecurringTransactionsRunner;
+
+REQUIRE Transactions, Notification, Time;
+
+isTransactionToday(RecurringTransactions r) = nextDate(r) = currentDate();
+
+
+
+applyTransaction(RecurringTransactions r) {
+    IF balance(account(r)) < amount(r) AND type(r) == TransactionType.expense THEN {
+        //stop here
+        NEW n = Notification {
+            user(n) <- user(r);
+            createdAt(n) <- currentDate();
+            message(n) <- 'Could not do transaction becuase there is not enough money in the account ' + name(account(r)) + '. We try to do it tomorrow, please check your balance.';
+        }
+
+        nextDate(r) <- sum(nextDate(r), 1);
+        lastAttempt(r) <- currentDate();
+    }
+    ELSE {
+        NEW t = Transaction {
+            createdAt(t) <- currentDateTime();
+            user(t) <- user(r);
+            category(t) <- category(r);
+            account(t) <- account(r);
+            type(t) <- type(r);
+            amount(t) <- amount(r);
+        }
+        lastAttempt(r) <- currentDate();
+        IF frequency(r) == Frequency.daily THEN {
+            nextDate(r) <- sum(nextDate(r), 1);
+        }ELSE IF frequency(r) == Frequency.weekly THEN {
+            nextDate(r) <- sum(nextDate(r), 7);
+        }ELSE IF frequency(r) == Frequency.monthly THEN {
+            nextDate(r) <- sumMonth(nextDate(r), 1);
+        }ELSE IF frequency(r) == Frequency.yearly THEN {
+            nextDate(r) <- sumYear(nextDate(r), 1);
+        }
+    }
+}
+
+processRecurringTransaction() {
+    FOR isTransactionToday(RecurringTransactions r) DO {
+        applyTransaction(r);
+    }
+    
+    APPLY;
+}
+
+
+

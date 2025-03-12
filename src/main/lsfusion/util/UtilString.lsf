@@ -1,0 +1,5 @@
+MODULE UtilString;
+
+
+hasString(STRING substring, STRING string) = FORMULA INTEGER PG 'POSITION(LOWER($1) in LOWER($2))';
+contains(STRING substring, STRING string) = hasString(substring, string) > 0;

@@ -1,0 +1,188 @@
+MODULE IncomeExpenseReports;
+
+REQUIRE Transactions;
+
+startDate 'Начало периода' = DATA LOCAL DATE();
+endDate 'Конец периода' = DATA LOCAL DATE();
+
+calculateIncome() = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
+    AND user(t) == currentUser() 
+    AND toDate(createdAt(t)) >= startDate() 
+    AND toDate(createdAt(t)) <= endDate();
+
+calculateExpense() = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
+    AND user(t) == currentUser() 
+    AND toDate(createdAt(t)) >= startDate() 
+    AND toDate(createdAt(t)) <= endDate();
+
+income 'Доход' () = OVERRIDE calculateIncome(), 0;
+expense 'Расход' () = OVERRIDE calculateExpense(), 0;
+
+FORM incomeExpenseReportXLSX 'Отчет о доходах и расходах'
+    PROPERTIES() income, expense
+;
+
+downloadReport 'Скачать отчет' () {
+    PRINT incomeExpenseReportXLSX XLSX;
+}
+
+FORM incomeExpenseReport 'Отчет о доходах и расходах'
+    PROPERTIES() startDate, endDate
+    PROPERTIES income() FOREGROUND #00FF00, expense() FOREGROUND #FF0000
+    PROPERTIES() downloadReport 
+    EVENTS ON INIT {
+        startDate() <- subtract(currentDate(), 7);
+        endDate() <- currentDate();
+    }
+;
+
+DESIGN incomeExpenseReport {
+    OBJECTS {
+        NEW main {
+            fill = 1;
+            NEW data {
+                horizontal = 1;
+                alignment = CENTER;
+                NEW d {
+                    fill = 1;
+                    alignment = CENTER;
+                    NEW sides {
+                        fill = 1;
+                        horizontal = 1;
+                        NEW left {
+                            fill = 1;
+                            MOVE PROPERTY(startDate());
+                            MOVE PROPERTY(income());
+                            marginRight = 10;
+                        }
+                        NEW right {
+                            fill = 1;
+                            MOVE PROPERTY(endDate());
+                            MOVE PROPERTY(expense());
+                        }
+                    }
+                    NEW button {
+                        fill = 1;
+                        alignment = CENTER;
+                        MOVE PROPERTY(downloadReport());
+                    } 
+                }
+            }
+        }
+    }
+}
+
+calculateIncomeCategory(Category c) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
+    AND user(t) == currentUser() 
+    AND toDate(createdAt(t)) >= startDate() 
+    AND toDate(createdAt(t)) <= endDate()
+    AND category(t) == c;
+
+calculateExpenseCategory(Category c) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
+    AND user(t) == currentUser() 
+    AND toDate(createdAt(t)) >= startDate() 
+    AND toDate(createdAt(t)) <= endDate()
+    AND category(t) == c;
+
+incomeCategory 'Доход' (Category c) = OVERRIDE calculateIncomeCategory(c), 0;
+expenseCategory 'Расход' (Category c) = OVERRIDE calculateExpenseCategory(c), 0;
+
+type 'тип' = DATA LOCAL TransactionType();
+
+FORM categoryStatisticsXLSX 'Статистика по категориям'
+    OBJECTS c = Category
+    PROPERTIES name 'Название категории' = name(c),
+        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00, 
+        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
+
+    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type()
+;
+
+downloadCategoryReport 'Скачать отчет' () {
+    PRINT categoryStatisticsXLSX XLSX;
+}
+
+FORM categoryStatistics 'Статистика по категориям'
+    PROPERTIES startDate(), endDate(), type 'Тип транзакции' = typeName(type())
+    OBJECTS c = Category
+    PROPERTIES name 'Название категории' = name(c),
+        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00, 
+        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
+    PROPERTIES() downloadCategoryReport
+    
+    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type() 
+    EVENTS ON INIT {
+        startDate() <- subtract(currentDate(), 7);
+        endDate() <- currentDate();
+        type() <- TransactionType.income;
+    }
+;
+
+
+months = DATA LOCAL INTEGER(INTEGER);
+
+
+fillMonths() {
+    FOR iterate(INTEGER i, 1, 12) DO {
+        IF currentMonth() >= i THEN {
+            months(i-1) <- i;
+            imported(i-1) <- TRUE;
+        }
+    }
+}
+
+calculateIncomeMonth(INTEGER i) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
+    AND user(t) == currentUser() 
+    AND extractMonthNumber(createdAt(t)) == i
+    AND extractYear(createdAt(t)) == currentYear()                                                                  
+    AND extractMonthNumber(createdAt(t)) == i;
+
+calculateExpenseMonth(INTEGER i) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
+    AND user(t) == currentUser() 
+    AND extractMonthNumber(createdAt(t)) == i
+    AND extractYear(createdAt(t)) == currentYear()                                                                   
+    AND extractMonthNumber(createdAt(t)) == i;
+
+incomeMonth 'Доход' (INTEGER i) = OVERRIDE calculateIncomeMonth(i), 0;
+expenseMonth 'Расход' (INTEGER i) = OVERRIDE calculateExpenseMonth(i), 0;
+
+monthName 'Месяц' (INTEGER i) = CASE 
+                            WHEN i == 1 THEN 'Январ'
+                            WHEN i == 2 THEN 'Февраль'
+                            WHEN i == 3 THEN 'Март'
+                            WHEN i == 4 THEN 'Апрель'
+                            WHEN i == 5 THEN 'Май'
+                            WHEN i == 6 THEN 'Июнь'
+                            WHEN i == 7 THEN 'Июль'
+                            WHEN i == 8 THEN 'Август'
+                            WHEN i == 9 THEN 'Сентябрь'
+                            WHEN i == 10 THEN 'Октябрь'
+                            WHEN i == 11 THEN 'Ноябрь'
+                            ELSE 'Декабрь';
+
+FORM monthlyStatistis 'Статистика по месяцам'
+    OBJECTS i = INTEGER
+    PROPERTIES i 'Номер месяца' = i+1, monthName 'Месяц' = monthName(months(i)), incomeMonth 'Доход' = incomeMonth(months(i)), expenseMonth 'Расход' = expenseMonth(months(i))
+    PROPERTIES difference 'Разница' = incomeMonth(months(i)) - expenseMonth(months(i))
+        FOREGROUND IF incomeMonth(months(i)) >= expenseMonth(months(i)) THEN #00FF00 ELSE #FF0000
+    FILTERS imported(i)
+    
+    EVENTS ON INIT {
+        fillMonths();
+    }
+;
+
+minIncomeInCurrentMonth() = GROUP SUM amount(RecurringTransactions r) IF user(r) == currentUser()
+    AND extractMonthNumber(nextDate(r)) == currentMonth()
+    AND extractYear(nextDate(r)) == currentYear()
+    AND type(r) == TransactionType.income;
+
+minExpenseInCurrentMonth() = GROUP SUM amount(RecurringTransactions r) IF user(r) == currentUser()
+    AND extractMonthNumber(nextDate(r)) == currentMonth()
+    AND extractYear(nextDate(r)) == currentYear()
+    AND type(r) == TransactionType.expense;
+
+FORM minExpenseAndIncomeInCurrentMonth 'Минимальный расход и доход в текущем месяце'
+    PROPERTIES minExpense 'Минимальный расход' = minExpenseInCurrentMonth(), 
+        minIncome 'Минимальный доход' = minIncomeInCurrentMonth();
+;

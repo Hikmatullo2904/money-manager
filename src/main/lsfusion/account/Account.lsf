@@ -1,0 +1,105 @@
+MODULE Account;
+
+REQUIRE SelfUser, Currency;
+
+CLASS Account;
+name 'Название аккаунта' = DATA STRING (Account) NONULL ;
+currency = DATA Currency (Account);
+balance 'баланс' = DATA LONG (Account);
+user = DATA SelfUser (Account);
+isDeleted = DATA BOOLEAN (Account);
+
+account = DATA LOCAL Account ();
+
+findByName(STRING name, SelfUser user) = GROUP LAST Account a IF name(a) == name AND user(a) == user ORDER a;
+id(Account a) = LONG (a AS Account);
+accountById(LONG id) = GROUP LAST Account a IF id(a) == id ORDER a;
+accountById(LONG id, SelfUser user) = GROUP LAST Account a IF id(a) == id AND user(a) == user ORDER a;
+
+CONSTRAINT Account a IS Account AND balance(a) < 0 MESSAGE 'Баланс не может быть меньше 0';
+CONSTRAINT SETCHANGED(name(Account a)) AND findByName(name(a), currentUser() AS SelfUser) 
+    AND isDeleted(findByName(name(a), currentUser() AS SelfUser)) 
+    MESSAGE 'Учетная запись с таким именем уже существует';
+
+
+deleteAccoun(Account a) {
+    isDeleted(a) <- TRUE;
+    APPLY;
+}
+
+FORM accounts 'Счета' 
+    OBJECTS a = Account
+    PROPERTIES(a) READONLY name, balance
+    PROPERTIES READONLY currency 'валюта' = getCurrencyName(currency(a))
+    PROPERTIES (a) NEWSESSION NEW, EDIT, deleteAccoun
+    FILTERS user(a) == currentUser() AND NOT isDeleted(a)
+;
+
+FORM account 'Счет' 
+    OBJECTS a = Account PANEL
+    PROPERTIES(a) name, balance
+    PROPERTIES currency 'валюта' = getCurrencyName(currency(a))
+
+    EDIT Account OBJECT a
+;
+
+WHEN SET(Account a IS Account) DO {
+    user(a) <- currentUser();
+    IF NOT currency(a) THEN {
+        currency(a) <- currency(currentUser() AS SelfUser);
+    }
+}
+
+
+CLASS Transers;
+createdAt 'Создано в' = DATA DATETIME (Transers);
+amount 'Количество' = DATA LONG (Transers) NONULL;
+sourceAccount = DATA Account (Transers) NONULL;
+targetAccount = DATA Account (Transers) NONULL;
+exchangeRate 'Курс обмена' = DATA LONG (Transers);
+user = DATA SelfUser (Transers);
+
+//CONSTRAINT Transers t IS Transers AND amount(t) > balance(sourceAccount(t)) MESSAGE 'На счете недостаточно средств для совершения этой перевод.';
+CONSTRAINT Transers t IS Transers AND amount(t) <= 0 MESSAGE 'Сумма должна быть больше 0';
+CONSTRAINT Transers t IS Transers AND currency(sourceAccount(t)) != currency(targetAccount(t)) AND NOT exchangeRate(t) MESSAGE 'Счета имеют разные валюты, пожалуйста, укажите курс обмена';
+CONSTRAINT Transers t IS Transers AND sourceAccount(t) == targetAccount(t) MESSAGE 'Вы не можете перевести на тот же счет';
+
+
+FORM transfers 'Переводы'
+    OBJECTS t = Transers
+    PROPERTIES createdAt = createdAt(t),
+    amount = amount(t), from 'Счет из' = name(sourceAccount(t)), to 'Счет в' = name(targetAccount(t)), 
+    exchangeRate 'Курс обмена' = exchangeRate(t)
+    PROPERTIES(t) NEWSESSION NEW
+    FILTERS user(t) == currentUser()
+;
+
+FORM transfer 'Перевод'
+    OBJECTS t = Transers PANEL
+    PROPERTIES from 'Счет из' = name(sourceAccount(t))ON CHANGE {
+            DIALOG accounts OBJECTS a = sourceAccount(t) CHANGE LIST name(a);
+        }, 
+        to 'Счет в' = name(targetAccount(t)) ON CHANGE {
+            DIALOG accounts OBJECTS a = targetAccount(t) CHANGE LIST name(a);
+        },
+        amount(t), exchangeRate(t)
+    EDIT Transers OBJECT t
+;
+
+
+WHEN SET(Transers t IS Transers) DO {
+    user(t) <- currentUser();
+    createdAt(t) <- currentDateTime();
+    LOCAL finalAmount = LONG ();
+    finalAmount() <- amount(t);
+    IF currency(sourceAccount(t)) != currency(targetAccount(t)) THEN {
+        finalAmount() <- amount(t) * exchangeRate(t);
+    }
+    balance(sourceAccount(t)) <- balance(sourceAccount(t)) (-) amount(t);
+    balance(targetAccount(t)) <- balance(targetAccount(t)) (+) finalAmount();
+    IF currency(sourceAccount(t)) == currency(targetAccount(t)) THEN {
+        exchangeRate(t) <- 0;
+    }
+}
+
+

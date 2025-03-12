@@ -1,0 +1,45 @@
+MODULE UtilResponse;
+
+REQUIRE UtilErrorMessages;
+
+code = DATA LOCAL INTEGER ();
+message = DATA LOCAL STRING ();
+success = DATA LOCAL TBOOLEAN ();
+
+FORM response
+    PROPERTIES() success, code, message 
+;
+
+
+
+returnError(STRING message, INTEGER code) {
+    message() <- message;
+    code() <- code;
+    success() <- TFALSE;
+    statusHttpTo() <- 400;
+    EXPORT response JSON;
+}
+
+returnError(INTEGER code) {
+    errorMessage(code);
+    message() <- errorMessage();
+    returnError(message(), code);
+}
+
+// Used to return 400 errors
+returnError(STRING message) {
+    returnError(message, 400);
+}
+
+
+
+returnSuccessResponse(STRING message) {
+    success() <- TTRUE;
+    statusHttpTo() <- 200;
+    message() <- message;
+    EXPORT response JSON;
+}
+
+returnSuccessResponse() {
+    returnSuccessResponse('ОК');
+}

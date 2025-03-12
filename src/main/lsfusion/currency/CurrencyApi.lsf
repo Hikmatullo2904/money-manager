@@ -1,0 +1,12 @@
+MODULE CurrencyApi;
+
+REQUIRE Currency;
+
+FORM getCurrencyResponse
+    OBJECTS data = Currency
+    PROPERTIES(data) id, name = getCurrencyName, symbol = getCurrencyEnumName
+;
+
+getCurrencies() {
+    EXPORT getCurrencyResponse JSON; 
+}

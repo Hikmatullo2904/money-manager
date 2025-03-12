@@ -1,0 +1,76 @@
+MODULE CategoryApi;
+REQUIRE SelfUser, Category, UtilResponse;
+
+
+name = DATA LOCAL STRING ();
+id = DATA LOCAL LONG ();
+
+addCategory(STRING p) {
+    
+    category() <- findByName(p);
+    IF category() THEN {
+        IF NOT user(category()) OR user(category()) == currentUser() THEN {
+            returnError(202);
+            RETURN ;
+        }
+    }
+    
+    NEW c = Category {
+        name(c) <- p;
+        IF role(currentUser() AS SelfUser) == Role.user THEN {
+            user(c) <- currentUser();
+        }
+        createdAt(c) <- currentDateTime();
+    }
+    APPLY ;
+    returnSuccessResponse();
+} @@api;
+
+
+deleteCategory(LONG p) {
+    category() <- categoryById(p);
+    IF NOT category() THEN {
+        returnError(204);
+        RETURN;
+    }
+    IF NOT user(category()) OR user(category()) != currentUser() THEN {
+        returnError(203);
+        RETURN ;
+    }
+    isDeleted(category()) <- TRUE;
+    APPLY ;
+    returnSuccessResponse();
+}
+
+updateCategory(FILE f) {
+    IMPORT JSON FROM f TO() name, id;
+    
+    category() <- categoryById(id());
+    IF NOT category() THEN {
+        returnError(204);
+        RETURN;
+    }
+    IF NOT user(category()) OR user(category()) != currentUser() THEN {
+        returnError(203);
+        RETURN ;
+    }
+    
+    IF category() != findByName(name()) THEN {
+        returnError(202);
+        RETURN;
+    }
+    
+    name(category()) <- name();
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+FORM getAllFormResponse
+    OBJECTS data = Category
+    PROPERTIES(data) id, name
+    FILTERS (NOT user(data) OR user(data) == currentUser()) AND NOT isDeleted(data)
+;
+
+getAllCategories() {
+    EXPORT getAllFormResponse JSON;
+} @@api;

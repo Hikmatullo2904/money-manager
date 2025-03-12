@@ -1,0 +1,282 @@
+MODULE TransactionsApi;
+
+REQUIRE Transactions, UtilResponse;
+
+startDate = DATA LOCAL DATE();
+endDate = DATA LOCAL DATE();
+amount = DATA LOCAL LONG();
+categoryId = DATA LOCAL LONG();
+accountId = DATA LOCAL LONG();
+type = DATA LOCAL STRING();
+id = DATA LOCAL LONG();
+description = DATA LOCAL STRING();
+date = DATA LOCAL DATE();
+
+transaction = DATA LOCAL Transaction();
+
+FORM getAllTransactions
+    OBJECTS data = Transaction
+    PROPERTIES(data) id, amount, createdAt
+    PROPERTIES categoryName = name(category(data)), accountName = name(account(data)), type = typeName(type(data))
+    ORDERS createdAt(data)
+    FILTERS user(data) == currentUser() AND toDate(createdAt(data)) >= startDate() AND toDate(createdAt(data)) <= endDate()
+;
+
+getAllTransactions(FILE f) {
+    IMPORT JSON FROM f TO() startDate, endDate;
+    IF NOT startDate() OR NOT endDate() THEN {
+        returnError(405);
+        RETURN;
+    }
+    EXPORT getAllTransactions JSON ;
+}@@api;
+
+FORM transactionRequestForm
+    PROPERTIES() id, amount, categoryId, accountId, type
+;
+
+addTransaction(FILE f) {
+    IMPORT transactionRequestForm JSON FROM f;
+    
+    IF NOT (amount() AND categoryId() AND accountId() AND type()) THEN {
+        returnError(405);
+        RETURN;
+    }
+    
+    IF type() == 'expense' THEN {
+        transactionType() <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        transactionType() <- TransactionType.income;
+    }
+    ELSE {
+        returnError(501);
+        RETURN;
+    }
+    
+    IF amount() <= 0 THEN {
+        returnError(505);
+        RETURN;
+    }
+    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    IF NOT account() THEN {
+        returnError(304);
+        RETURN;
+    }
+    
+    IF transactionType() == TransactionType.expense AND balance(account()) < amount() THEN {
+        returnError(502);
+        RETURN;
+    }
+
+    category() <- categoryById(categoryId());
+    IF NOT category() THEN {
+        returnError(204);
+        RETURN;
+    }
+    
+    
+    NEW t = Transaction {
+        amount(t) <- amount();
+        category(t) <- category();
+        account(t) <- account();
+        createdAt(t) <- currentDateTime();
+        user(t) <- currentUser();
+        IF type() == 'expense' THEN {
+            type(t) <- TransactionType.expense;
+        }ELSE IF type() == 'income' THEN {
+            type(t) <- TransactionType.income;
+        }
+    }
+    
+    
+    
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+
+updateTransaction(FILE f) {
+    IMPORT transactionRequestForm JSON FROM f;
+
+    IF NOT (id() AND amount() AND categoryId() AND accountId() AND type()) THEN {
+        returnError(405);
+        RETURN;
+    }
+    
+    transaction() <- transactionById(id());
+    IF NOT transaction() THEN {
+        returnError(504);
+        RETURN;
+    }
+
+    IF type() == 'expense' THEN {
+        transactionType() <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        transactionType() <- TransactionType.income;
+    }
+    ELSE {
+        returnError(501);
+        RETURN;
+    }
+
+    IF amount() <= 0 THEN {
+        returnError(505);
+        RETURN;
+    }
+    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    IF NOT account() THEN {
+        returnError(304);
+        RETURN;
+    }
+
+    category() <- categoryById(categoryId());
+    IF NOT category() THEN {
+        returnError(204);
+        RETURN;
+    }
+    
+    IF transactionType() == TransactionType.expense AND balance(account()) + amount(transaction()) < amount() THEN {
+        returnError(502);
+        RETURN;
+    }
+    
+    // here We have to revert money to that used account in creation.
+//    IF type(transaction()) == TransactionType.expense THEN {
+//        balance(account(transaction())) <- balance(account(transaction())) (+) amount(transaction());
+//    }ELSE IF type(transaction()) == TransactionType.income THEN {
+//        balance(account(transaction())) <- balance(account(transaction())) (-) amount(transaction());
+//    }
+    
+    amount(transaction()) <- amount();
+    category(transaction()) <- category();
+    account(transaction()) <- account();
+    createdAt(transaction()) <- currentDateTime();
+    user(transaction()) <- currentUser();
+    IF type() == 'expense' THEN {
+        type(transaction()) <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        type(transaction()) <- TransactionType.income;
+    }
+    
+    
+
+//    IF transactionType() == TransactionType.expense THEN {
+//        IF balance(account()) < amount() THEN {
+//            returnError(502);
+//            RETURN;
+//        }
+//        balance(account()) <- balance(account()) (-) amount();
+//    }ELSE IF transactionType() == TransactionType.income THEN {
+//        balance(account()) <- balance(account()) (+) amount();
+//    }
+
+
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+
+deleteTransaction(LONG id) {
+    transaction() <- transactionById(id);
+    IF NOT transaction() THEN {
+        returnError(504);
+        RETURN;
+    }
+    
+    
+    DELETE transaction();
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+
+frequency() = DATA LOCAL STRING();
+
+FORM recurringTransactionRequestForm
+    PROPERTIES() id,amount, categoryId, accountId, type, description, date, frequency
+;
+
+
+
+addRecurringTransaction(FILE f) {
+    IMPORT recurringTransactionRequestForm JSON FROM f;
+    
+    IF NOT (amount() AND categoryId() AND accountId() AND type() AND date()) THEN {
+        returnError(405);
+        RETURN;
+    }
+    
+    IF type() == 'expense' THEN {
+        transactionType() <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        transactionType() <- TransactionType.income;
+    }
+    ELSE {
+        returnError(501);
+        RETURN;
+    }
+    
+    IF amount() <= 0 THEN {
+        returnError(505);
+        RETURN;
+    }
+    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    IF NOT account() THEN {
+        returnError(304);
+        RETURN;
+    }
+
+    category() <- categoryById(categoryId());
+    IF NOT category() THEN { 
+        returnError(204);
+        RETURN;
+    }
+    
+    getFrequency(frequency());
+    
+    NEW r = RecurringTransactions {
+        amount(r) <- amount();
+        category(r) <- category();
+        account(r) <- account();
+        user(r) <- currentUser();
+        type(r) <- transactionType();
+        description(r) <- description();
+        createdAt(r) <- currentDate();
+        nextDate(r) <- date();
+        firstDate(r) <- date();
+        frequency(r) <- Transactions.frequency();
+    }
+    
+    APPLY ;
+    returnSuccessResponse();
+}@@api;
+
+FORM getRecurringTransactionsForm
+    OBJECTS data = RecurringTransactions
+    PROPERTIES title = description(data), 
+        type = typeName(type(data)), category = name(category(data)),
+        amount = amount(data), account = name(account(data)),
+        frequency = getFrequencyName(frequency(data)),
+        createdAt = createdAt(data),
+        firstDate = firstDate(data),
+        nextDate = nextDate(data)
+    
+    FILTERS user(data) == currentUser()
+;
+
+getRecurringTransactions() {
+    EXPORT getRecurringTransactionsForm JSON;
+} @@api;
+
+recurringTransaction = DATA LOCAL RecurringTransactions();
+
+deleteRecurringTransaction(LONG id) {
+    recurringTransaction() <- recurringTransactionById(id);
+    IF NOT recurringTransaction() THEN {
+        returnError(604);
+        RETURN;
+    }
+    DELETE recurringTransaction();
+    APPLY ;
+    returnSuccessResponse();
+}@@api;

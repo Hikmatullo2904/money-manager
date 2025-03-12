@@ -1,0 +1,24 @@
+MODULE MoneyManager;
+REQUIRE Account, Category, Transactions, Notification, IncomeExpenseReports, SelfUser;
+
+NAVIGATOR {
+    NEW FOLDER AppManagment 'Управление приложением' WINDOW toolbar {
+        NEW au = appUsers;
+    }
+    NEW FOLDER Account 'Счета' WINDOW toolbar{
+        NEW accounts;
+        NEW transfers;
+    } 
+    NEW uc =  UserCategories;
+    NEW FOLDER Transactions 'Транзакции' WINDOW toolbar {
+        NEW transactions;
+        NEW recurringTransactions;
+    }
+    NEW notifications;
+    NEW FOLDER Reports 'Отчеты и статистика' WINDOW toolbar {
+        NEW incomeExpenseReport;
+        NEW categoryStatistics;
+        NEW monthlyStatistis;
+        NEW minExpenseAndIncomeInCurrentMonth;
+    }
+}

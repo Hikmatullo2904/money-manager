@@ -1,0 +1,10 @@
+MODULE TransactionType;
+
+CLASS TransactionType {
+    expense 'Расход',
+    income 'Доход'
+}
+
+transactionType = DATA LOCAL TransactionType();
+typeName(TransactionType t) = staticCaption(t);
+

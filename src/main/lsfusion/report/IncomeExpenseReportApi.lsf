@@ -1,0 +1,90 @@
+MODULE IncomeExpenseReportApi;
+
+REQUIRE IncomeExpenseReports, UtilResponse;
+
+
+
+FORM incomeExpenseReportResponse
+    PROPERTIES() startDate, endDate
+    PROPERTIES income(), expense()
+;
+
+getIncomeExpenseStatistics(FILE f) {
+    IMPORT JSON FROM f TO() startDate, endDate;
+    IF NOT startDate() OR NOT endDate() THEN {
+        returnError(405);
+        RETURN;
+    }
+    EXPORT incomeExpenseReportResponse JSON;
+} @@api;
+
+FORM categoryStatisticsXLSX
+    OBJECTS c = Category
+    PROPERTIES name 'Название категории' = name(c),
+        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00,
+        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
+
+    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type()
+;
+
+downloadCategoryReportFile() {
+    PRINT categoryStatisticsXLSX XLSX TO exportFile;
+}@@api;
+
+dfg() {
+    PRINT categoryStatisticsXLSX XLSX TO exportFile;
+    EXPORT JSON FROM file = encodeBase64(exportFile());
+}
+
+calculateAmountCategory(Category c) = GROUP SUM(amount(Transaction t)) IF 
+    type(t) == transactionType()
+    AND user(t) == currentUser()
+    AND toDate(createdAt(t)) >= startDate()
+    AND toDate(createdAt(t)) <= endDate()
+    AND category(t) == c;
+
+amountInCategory(Category c) = OVERRIDE calculateAmountCategory(c), 0;
+
+FORM categoryStatisticsResponse
+    OBJECTS data = Category
+    PROPERTIES name = name(data),
+    amount = amountInCategory(data)
+
+    FILTERS user(data) == currentUser() AND NOT isDeleted(data) AND type(data) == transactionType()
+;
+
+
+
+getCategoryStatistics(FILE f) {
+    LOCAL type = STRING();
+    IMPORT JSON FROM f TO() startDate, endDate, type;
+    IF type() == 'expense' THEN {
+        transactionType() <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        transactionType() <- TransactionType.income;
+    }
+    IF NOT startDate() OR NOT endDate() OR NOT transactionType() THEN {
+        returnError(405);
+        RETURN;
+    }
+    EXPORT categoryStatisticsResponse JSON;
+} @@api;
+
+
+FORM monthlyStatistisResponse
+    OBJECTS data = INTEGER
+    PROPERTIES month = monthName(months(data)), income = incomeMonth(months(data)), expense = expenseMonth(months(data))
+    FILTERS imported(data)
+;
+
+getMonthlyStatistics() {
+    fillMonths();
+    EXPORT monthlyStatistisResponse JSON;
+} @@api;
+
+
+getMinExpenseAndIncomeInCurrentMonth() {
+    EXPORT minExpenseAndIncomeInCurrentMonth JSON;
+} @@api;
+
+
