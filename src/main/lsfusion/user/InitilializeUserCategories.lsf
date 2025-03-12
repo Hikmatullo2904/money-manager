@@ -1,0 +1,122 @@
+MODULE InitilializeUserCategories;
+REQUIRE Category;
+
+//onUserRegister(CustomUser user) + {
+//    addCategoriesToUser(user);
+//}
+
+WHEN SET(SelfUser user IS SelfUser) DO {
+    //?Expense
+    NEW food = Category{
+        name(food) <- 'Food';
+        user(food) <- user;
+        type(food) <- TransactionType.expense;
+    }
+
+    NEW clathes = Category{
+        name(clathes) <- 'Clothes';
+        user(clathes) <- user;
+        type(clathes) <- TransactionType.expense;
+    }
+
+    NEW entertainment = Category{
+        name(entertainment) <- 'Entertainment';
+        user(entertainment) <- user;
+        type(entertainment) <- TransactionType.expense;
+    }
+
+    NEW transport = Category{
+        name(transport) <- 'Transportation';
+        user(transport) <- user;
+        type(transport) <- TransactionType.expense;
+    }
+
+    NEW drink = Category{
+        name(drink) <- 'Drink';
+        user(drink) <- user;
+        type(drink) <- TransactionType.expense;
+    }
+    NEW education = Category{
+        name(education) <- 'Education';
+        user(education) <- user;
+        type(education) <- TransactionType.expense;
+    }
+
+    NEW parfumes = Category{
+        name(parfumes) <- 'Parfumes';
+        user(parfumes) <- user;
+        type(parfumes) <- TransactionType.expense;
+    }
+
+
+    //?Income 
+    NEW bonus = Category{
+        name(bonus) <- 'Bonus';
+        user(bonus) <- user;
+        type(bonus) <- TransactionType.income;
+    }
+
+    NEW salary = Category{
+        name(salary) <- 'Salary';
+        user(salary) <- user;
+        type(salary) <- TransactionType.income;
+    }
+}
+
+WHEN SET(User user IS User) DO {
+    //?Expense
+    NEW food = Category{
+        name(food) <- 'Food';
+        user(food) <- user;
+        type(food) <- TransactionType.expense;
+    }
+
+    NEW clathes = Category{
+        name(clathes) <- 'Clothes';
+        user(clathes) <- user;
+        type(clathes) <- TransactionType.expense;
+    }
+
+    NEW entertainment = Category{
+        name(entertainment) <- 'Entertainment';
+        user(entertainment) <- user;
+        type(entertainment) <- TransactionType.expense;
+    }
+
+    NEW transport = Category{
+        name(transport) <- 'Transportation';
+        user(transport) <- user;
+        type(transport) <- TransactionType.expense;
+    }
+
+    NEW drink = Category{
+        name(drink) <- 'Drink';
+        user(drink) <- user;
+        type(drink) <- TransactionType.expense;
+    }
+    NEW education = Category{
+        name(education) <- 'Education';
+        user(education) <- user;
+        type(education) <- TransactionType.expense;
+    }
+
+    NEW parfumes = Category{
+        name(parfumes) <- 'Parfumes';
+        user(parfumes) <- user;
+        type(parfumes) <- TransactionType.expense;
+    }
+
+
+    //?Income 
+    NEW bonus = Category{
+        name(bonus) <- 'Bonus';
+        user(bonus) <- user;
+        type(bonus) <- TransactionType.income;
+    }
+
+    NEW salary = Category{
+        name(salary) <- 'Salary';
+        user(salary) <- user;
+        type(salary) <- TransactionType.income;
+    }
+}

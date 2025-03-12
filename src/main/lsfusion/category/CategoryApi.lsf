@@ -7,7 +7,7 @@ id = DATA LOCAL LONG ();
 
 addCategory(STRING p) {
     
-    category() <- findByName(p);
+    category() <- findByName(p, currentUser());
     IF category() THEN {
         IF NOT user(category()) OR user(category()) == currentUser() THEN {
             returnError(202);
@@ -28,24 +28,20 @@ addCategory(STRING p) {
 
 
 deleteCategory(LONG p) {
-    category() <- categoryById(p);
+    category() <- categoryById(p, currentUser());
     IF NOT category() THEN {
         returnError(204);
         RETURN;
-    }
-    IF NOT user(category()) OR user(category()) != currentUser() THEN {
-        returnError(203);
-        RETURN ;
     }
     isDeleted(category()) <- TRUE;
     APPLY ;
     returnSuccessResponse();
-}
+}@@api;
 
 updateCategory(FILE f) {
     IMPORT JSON FROM f TO() name, id;
     
-    category() <- categoryById(id());
+    category() <- categoryById(id(), currentUser());
     IF NOT category() THEN {
         returnError(204);
         RETURN;
@@ -55,7 +51,7 @@ updateCategory(FILE f) {
         RETURN ;
     }
     
-    IF category() != findByName(name()) THEN {
+    IF category() != findByName(name(), currentUser()) THEN {
         returnError(202);
         RETURN;
     }

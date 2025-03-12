@@ -68,7 +68,7 @@ addTransaction(FILE f) {
         RETURN;
     }
 
-    category() <- categoryById(categoryId());
+    category() <- categoryById(categoryId(), currentUser());
     IF NOT category() THEN {
         returnError(204);
         RETURN;
@@ -129,7 +129,7 @@ updateTransaction(FILE f) {
         RETURN;
     }
 
-    category() <- categoryById(categoryId());
+    category() <- categoryById(categoryId(), currentUser());
     IF NOT category() THEN {
         returnError(204);
         RETURN;
@@ -226,7 +226,7 @@ addRecurringTransaction(FILE f) {
         RETURN;
     }
 
-    category() <- categoryById(categoryId());
+    category() <- categoryById(categoryId(), currentUser());
     IF NOT category() THEN { 
         returnError(204);
         RETURN;

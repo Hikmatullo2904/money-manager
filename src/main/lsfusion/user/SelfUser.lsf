@@ -36,3 +36,4 @@ FORM appUsers 'Пользователи приложения'
     PROPERTIES(u) index, firstName, lastName, email
     PROPERTIES r 'Роль' = roleName(role(u))
 ;
+

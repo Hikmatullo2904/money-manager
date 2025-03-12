@@ -11,8 +11,7 @@ isDeleted = DATA BOOLEAN (Category);
 type = DATA TransactionType(Category);
 
 
-findByName(STRING name) = GROUP LAST Category c IF name(c) == name ORDER c;
-categoryById(LONG id) = GROUP LAST Category c IF LONG(c AS Category) == id ORDER c;
+findByName(STRING name, SelfUser s) = GROUP LAST Category c IF name(c) == name AND user(c) == s ORDER c;
 categoryById(LONG id, SelfUser s) = GROUP LAST Category c IF LONG(c AS Category) == id AND user(c) == s ORDER c;
 id(Category c) = LONG (c AS Category);
 category = DATA LOCAL Category ();
@@ -23,22 +22,22 @@ CONSTRAINT Category c IS Category AND NOT type(c) MESSAGE 'Пожалуйста,
 CONSTRAINT SETCHANGED(type(Category c)) AND NOT user(c) AND role(currentUser() AS SelfUser) == Role.user 
     MESSAGE 'Категории приложений не могут быть отредактированы';
 
-deleteCategory(Category c) {
+deleteCategoryForm(Category c) {
     IF NOT user(c) THEN {
         MESSAGE 'Категории приложений не могут быть удалены';
         RETURN;
     }
     isDeleted(c) <- TRUE;
-    
+    APPLY ;
 }
 
 FORM UserCategories 'Категории' 
     OBJECTS c = Category
     PROPERTIES READONLY name = name(c), type 'тип' = typeName(type(c))
-    PROPERTIES (c) NEWSESSION NEW, EDIT, deleteCategory
+    PROPERTIES (c) NEWSESSION NEW, EDIT, deleteCategoryForm
     PROPERTIES categoryType 'Тип категории' = typeName(categoryType())
     FILTERS NOT isDeleted(c) 
-    AND (NOT user(c) OR user(c) == currentUser())
+    AND user(c) == currentUser()
     AND (NOT categoryType() OR categoryType() == type(c))
 ;
 
@@ -52,5 +51,7 @@ FORM category 'Категория'
 
 WHEN SET(Category c IS Category) DO {
     createdAt(c) <- currentDateTime();
-    user(c) <- currentUser();
+    IF NOT user(c) THEN {
+        user(c) <- currentUser();
+    }
 }
