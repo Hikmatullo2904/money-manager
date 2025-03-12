@@ -1,0 +1,1237 @@
+openapi: 3.0.0
+info:
+  title: "Название API"
+  description: "Описание API на русском языке. Все API (кроме авторизации) требуют аутентификации с использованием Bearer Token."
+  version: "1.0.0"
+servers:
+  - url: "https://api.example.com/v1"
+    description: "Основной сервер API"
+paths:
+  /exec?action=getAllCategories:
+    get:
+      tags:
+        - "Категории"
+      summary: "Получить все категории"
+      description: "Возвращает пользовательские и встроенные категории."
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Успешный ответ с категориями"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 6762
+                        name:
+                          type: string
+                          example: "Food"
+  /exec?action=addCategory:
+    get:
+      tags:
+        - "Категории"
+      summary: "Добавить категорию"
+      description: "Добавляет новую категорию."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: p
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "Milk"
+      responses:
+        "200":
+          description: "Успешное добавление категории"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 202
+                  message:
+                    type: string
+                    example: "Категория с таким названием уже существует"
+  /exec?action=updateCategory:
+    get:
+      tags:
+        - "Категории"
+      summary: "Обновить категорию"
+      description: "Обновляет существующую категорию по ID."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 7036
+                name:
+                  type: string
+                  example: "Drink"
+      responses:
+        "200":
+          description: "Успешное обновление категории"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 204
+                  message:
+                    type: string
+                    example: "Категория не найдена"
+        "202":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 202
+                  message:
+                    type: string
+                    example: "Категория с таким названием уже существует"
+        "203":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 203
+                  message:
+                    type: string
+                    example: "У вас нет доступа для редактирования этой категории"
+  /exec?action=deleteCategory:
+    get:
+      tags:
+        - "Категории"
+      summary: "Удалить категорию"
+      description: "Удаляет категорию по ID."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: p
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 7542
+      responses:
+        "200":
+          description: "Успешное удаление категории"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 204
+                  message:
+                    type: string
+                    example: "Категория не найдена"
+  /exec?action=getAccounts:
+    get:
+      tags:
+        - "Аккаунты"
+      summary: "Получить все аккаунты"
+      description: "Возвращает список аккаунтов пользователя."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ с аккаунтами"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 8612
+                        name:
+                          type: string
+                          example: "Debit card"
+                        balance:
+                          type: number
+                          example: 20000
+                        currency:
+                          type: string
+                          example: "Uzbekistan (UZS)"
+  /exec?action=addAccount:
+    get:
+      tags:
+        - "Аккаунты"
+      summary: "Добавить аккаунт"
+      description: "Добавляет новый аккаунт пользователю."
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Aloqa"
+                balance:
+                  type: number
+                  example: 2000
+                currencyId:
+                  type: integer
+                  example: 122
+      responses:
+        "200":
+          description: "Успешное добавление аккаунта"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 302
+                  message:
+                    type: string
+                    example: "Аккаунт с таким именем уже существует"
+  /exec?action=updateAccount:
+    get:
+      tags:
+        - "Аккаунты"
+      summary: "Обновить аккаунт"
+      description: "Обновляет существующий аккаунт пользователя."
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 7836
+                name:
+                  type: string
+                  example: "Main"
+                balance:
+                  type: number
+                  example: 100000
+                currencyId:
+                  type: integer
+                  example: 122
+      responses:
+        "200":
+          description: "Успешное обновление аккаунта"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 302
+                  message:
+                    type: string
+                    example: "Аккаунт с таким именем уже существует"
+  /exec?action=deleteAccount:
+    get:
+      tags:
+        - "Аккаунты"
+      summary: "Удалить аккаунт"
+      description: "Удаляет аккаунт пользователя по ID."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 7940
+      responses:
+        "200":
+          description: "Успешное удаление аккаунта"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 304
+                  message:
+                    type: string
+                    example: "Аккаунт не найден"
+  /exec?action=getCurrencies:
+    get:
+      tags:
+        - "Валюты"
+      summary: "Получить все валюты"
+      description: "Возвращает список всех доступных валют."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ с валютами"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 8524
+                        name:
+                          type: string
+                          example: "Saudi Arabia (SAR)"
+                        symbol:
+                          type: string
+                          example: "Currency_Currency.sar"
+  /exec?action=addTransaction:
+    get:
+      tags:
+        - "Транзакции"
+      summary: "Добавить транзакцию"
+      description: "Добавляет новую транзакцию."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: number
+            example: 40000
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "income"
+        - name: categoryId
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 7540
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 8612
+      responses:
+        "200":
+          description: "Успешное добавление транзакции"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 502
+                  message:
+                    type: string
+                    example: "На счете недостаточно средств для выполнения данной транзакции"
+  /exec?action=getAllTransactions:
+    get:
+      tags:
+        - "Транзакции"
+      summary: "Получить все транзакции"
+      description: "Возвращает транзакции пользователя за указанный временной интервал."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2025-01-01"
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "2025-04-30"
+      responses:
+        "200":
+          description: "Успешный ответ с транзакциями"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 37875
+                        amount:
+                          type: number
+                          example: 40000
+                        createdAt:
+                          type: string
+                          example: "2025-03-07T10:18:14"
+                        categoryName:
+                          type: string
+                          example: "Clothes"
+                        accountName:
+                          type: string
+                          example: "Debit card"
+                        type:
+                          type: string
+                          example: "Доход"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 405
+                  message:
+                    type: string
+                    example: "Пожалуйста, укажите все обязательные поля"
+  /exec?action=updateTransaction:
+    get:
+      tags:
+        - "Транзакции"
+      summary: "Обновить транзакцию"
+      description: "Обновляет существующую транзакцию."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 37877
+        - name: amount
+          in: query
+          required: true
+          schema:
+            type: number
+            example: 400000
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            example: "expense"
+        - name: categoryId
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 7540
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 8612
+      responses:
+        "200":
+          description: "Успешное обновление транзакции"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "502":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 502
+                  message:
+                    type: string
+                    example: "На счете недостаточно средств для выполнения данной транзакции"
+        "504":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 504
+                  message:
+                    type: string
+                    example: "Транзакция не найдена"
+  /exec?action=deleteTransaction:
+    get:
+      tags:
+        - "Транзакции"
+      summary: "Удалить транзакцию"
+      description: "Удаляет существующую транзакцию по ID."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 22904
+      responses:
+        "200":
+          description: "Успешное удаление транзакции"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 504
+                  message:
+                    type: string
+                    example: "Транзакция не найдена"
+  /exec?action=getAllNotifications:
+    get:
+      tags:
+        - "Уведомления"
+      summary: "Получить все уведомления"
+      description: "Возвращает все уведомления из приложения."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Список уведомлений"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1345
+                        message:
+                          type: string
+                          example: "Не удалось выполнить транзакцию. На счете Main недостаточно денег"
+                        createdAt:
+                          type: string
+                          example: "2025-03-06"
+  /exec?action=deleteNotification:
+    get:
+      tags:
+        - "Уведомления"
+      summary: "Удалить уведомление"
+      description: "Удаляет указанное уведомление."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+            example: 1234
+      responses:
+        "200":
+          description: "Успешное удаление"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 104
+                  message:
+                    type: string
+                    example: "Не найдена"
+  /exec?action=getRecurringTransactions:
+    get:
+      tags:
+        - "Регулярные Транзакции"
+      summary: "Получить регулярные транзакции"
+      description: "Возвращает список регулярных транзакций пользователя. Регулярные транзакции автоматически выполняются по заданному расписанию, например, зарплата или ежемесячные платежи."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ с регулярными транзакциями"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          example: "leva"
+                        type:
+                          type: string
+                          example: "Доход"
+                        category:
+                          type: string
+                          example: "Project"
+                        amount:
+                          type: number
+                          example: 100
+                        account:
+                          type: string
+                          example: "Main"
+                        frequency:
+                          type: string
+                          example: "Ежедневно"
+                        createdAt:
+                          type: string
+                          example: "2025-03-07"
+                        firstDate:
+                          type: string
+                          example: "2025-03-07"
+                        nextDate:
+                          type: string
+                          example: "2025-03-16"
+  /exec?action=addRecurringTransaction:
+    get:
+      tags:
+        - "Регулярные Транзакции"
+      summary: "Добавить регулярную транзакцию"
+      description: "Создаёт новую регулярную транзакцию, которая будет выполняться автоматически."
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  example: 1000
+                type:
+                  type: string
+                  example: "expense"
+                categoryId:
+                  type: integer
+                  example: 7540
+                accountId:
+                  type: integer
+                  example: 8612
+                date:
+                  type: string
+                  example: "2025-03-07"
+                frequency:
+                  enum: ["daily", "weekly", "monthly", "yearly"]
+                  example: "daily"
+      responses:
+        "200":
+          description: "Успешное создание регулярной транзакции"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка: отсутствуют обязательные поля"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 405
+                  message:
+                    type: string
+                    example: "Пожалуйста, укажите все обязательные поля"
+  /exec?action=deleteRecurringTransaction:
+    get:
+      tags:
+        - "Регулярные Транзакции"
+      summary: "Удалить регулярную транзакцию"
+      description: "Удаляет регулярную транзакцию по её ID."
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: "ID регулярной транзакции"
+      responses:
+        "200":
+          description: "Успешное удаление регулярной транзакции"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка: Повторяющаяся транзакция не найдена"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 604
+                  message:
+                    type: string
+                    example: "Повторяющаяся транзакция не найдена"
+  /exec?action=getIncomeExpenseStatistics:
+    post:
+      tags:
+        - "Статистика"
+      summary: "Получить статистику доходов и расходов"
+      description: "Возвращает статистику доходов и расходов за указанный период."
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  example: "2025-03-03"
+                endDate:
+                  type: string
+                  example: "2025-03-10"
+      responses:
+        "200":
+          description: "Успешный ответ со статистикой"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  income:
+                    type: number
+                    example: 41028
+                  expense:
+                    type: number
+                    example: 38946
+        "400":
+          description: "Ошибка: отсутствуют обязательные поля"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 405
+                  message:
+                    type: string
+                    example: "Пожалуйста, укажите все обязательные поля"
+
+  /exec?action=getMonthlyStatistics:
+    get:
+      tags:
+        - "Статистика"
+      summary: "Получить месячную статистику доходов и расходов"
+      description: "Возвращает статистику доходов и расходов по месяцам с января до текущего месяца."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ со статистикой по месяцам"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          type: string
+                          example: "Январь"
+                        income:
+                          type: number
+                          example: 0
+                        expense:
+                          type: number
+                          example: 0
+
+  /exec?action=getCategoryStatistics:
+    post:
+      tags:
+        - "Статистика"
+      summary: "Получить статистику по категориям"
+      description: "Возвращает доход или расход по категориям за указанный период. Категории делятся на группы: доход или расход."
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  example: "2025-03-03"
+                endDate:
+                  type: string
+                  example: "2025-03-10"
+                type:
+                  type: string
+                  enum: [ "income", "expense" ]
+                  example: "expense"
+      responses:
+        "200":
+          description: "Успешный ответ со статистикой по категориям"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: "Drink"
+                        amount:
+                          type: number
+                          example: 100
+        "400":
+          description: "Ошибка: отсутствуют обязательные поля"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 405
+                  message:
+                    type: string
+                    example: "Пожалуйста, укажите все обязательные поля"
+
+  /exec?action=getMinExpenseAndIncomeInCurrentMonth:
+    get:
+      tags:
+        - "Статистика"
+      summary: "Получить минимально ожидаемые доход и расход в текущем месяце"
+      description: "Возвращает минимально ожидаемый доход и расход на основе добавленных пользователем регулярных транзакций."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ с минимально ожидаемыми доходом и расходом"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  minIncome:
+                    type: number
+                    example: 10000
+                  minExpense:
+                    type: number
+                    example: 5000
+  /exec?action=register:
+    post:
+      tags:
+        - "Аутентификация"
+      summary: "Регистрация пользователя"
+      description: "Создает нового пользователя."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  example: "Ali"
+                lastName:
+                  type: string
+                  example: "Abdulloh"
+                email:
+                  type: string
+                  example: "ali@gmail.com"
+                password:
+                  type: string
+                  example: "12345"
+      responses:
+        "200":
+          description: "Успешная регистрация"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка: пользователь уже существует"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 101
+                  message:
+                    type: string
+                    example: "Пользователь с таким именем уже существует"
+
+  /exec?action=login:
+    post:
+      tags:
+        - "Аутентификация"
+      summary: "Авторизация пользователя"
+      description: "Аутентифицирует пользователя и выдает JWT-токен."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "ali@gmail.com"
+                password:
+                  type: string
+                  example: "12345"
+      responses:
+        "200":
+          description: "Успешная авторизация"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhbGlAZ21haWwuY29tIiwiZXhwIjoxNzQxNzYzNjkyfQ.BB3lHXGPWXhos1DC6teB"
+        "400":
+          description: "Ошибка: неверные учетные данные"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 102
+                  message:
+                    type: string
+                    example: "Email или пароль неверны"
+
+  /exec?action=me:
+    get:
+      tags:
+        - "User"
+      summary: "Получить информацию о текущем пользователе"
+      description: "Возвращает данные о пользователе на основе токена аутентификации."
+      security:
+        - bearerAuth: [ ]
+      responses:
+        "200":
+          description: "Успешный ответ с данными пользователя"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  firstName:
+                    type: string
+                    example: "Ali"
+                  lastName:
+                    type: string
+                    example: "Abdulloh"
+                  email:
+                    type: string
+                    example: "ali@gmail.com"
+                  createdAt:
+                    type: string
+                    format: date-time
+                    example: "2025-03-03T11:09:09"
+        "401":
+          description: "Ошибка: токен недействителен или отсутствует"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  message:
+                    type: string
+                    example: "Токен недействителен или отсутствует"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
