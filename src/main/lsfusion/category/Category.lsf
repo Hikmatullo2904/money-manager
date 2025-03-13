@@ -54,4 +54,4 @@ WHEN SET(Category c IS Category) DO {
     IF NOT user(c) THEN {
         user(c) <- currentUser();
     }
-}
+ }
