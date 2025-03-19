@@ -517,10 +517,6 @@ paths:
                   type: integer
                   example: 1343
                   required: true
-                type:
-                  type: string
-                  enum: ["income", "expense"]
-                  example: "income"
       responses:
         "200":
           description: "Успешное добавление транзакции"
@@ -627,37 +623,25 @@ paths:
       description: "Обновляет существующую транзакцию."
       security:
         - bearerAuth: [ ]
-      parameters:
-        - name: id
-          in: query
-          required: true
-          schema:
-            type: integer
-            example: 37877
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: number
-            example: 400000
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-            example: "expense"
-        - name: categoryId
-          in: query
-          required: true
-          schema:
-            type: integer
-            example: 7540
-        - name: accountId
-          in: query
-          required: true
-          schema:
-            type: integer
-            example: 8612
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: number
+                  example: 22904
+                accountId:
+                  type: number
+                  example: 7940
+                amount:
+                  type: number
+                  example: 100
+                categoryId:
+                  type: number
+                  example: 1343
       responses:
         "200":
           description: "Успешное обновление транзакции"
