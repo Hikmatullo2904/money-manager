@@ -38,18 +38,8 @@ FORM transactionRequestForm
 addTransaction(FILE f) {
     IMPORT transactionRequestForm JSON FROM f;
     
-    IF NOT (amount() AND categoryId() AND accountId() AND type()) THEN {
+    IF NOT (amount() AND categoryId() AND accountId()) THEN {
         returnError(405);
-        RETURN;
-    }
-    
-    IF type() == 'expense' THEN {
-        transactionType() <- TransactionType.expense;
-    }ELSE IF type() == 'income' THEN {
-        transactionType() <- TransactionType.income;
-    }
-    ELSE {
-        returnError(501);
         RETURN;
     }
     
@@ -81,11 +71,7 @@ addTransaction(FILE f) {
         account(t) <- account();
         createdAt(t) <- currentDateTime();
         user(t) <- currentUser();
-        IF type() == 'expense' THEN {
-            type(t) <- TransactionType.expense;
-        }ELSE IF type() == 'income' THEN {
-            type(t) <- TransactionType.income;
-        }
+        type(t) <- type(category());
     }
     
     
@@ -98,7 +84,7 @@ addTransaction(FILE f) {
 updateTransaction(FILE f) {
     IMPORT transactionRequestForm JSON FROM f;
 
-    IF NOT (id() AND amount() AND categoryId() AND accountId() AND type()) THEN {
+    IF NOT (id() AND amount() AND categoryId() AND accountId()) THEN {
         returnError(405);
         RETURN;
     }
@@ -106,16 +92,6 @@ updateTransaction(FILE f) {
     transaction() <- transactionById(id());
     IF NOT transaction() THEN {
         returnError(504);
-        RETURN;
-    }
-
-    IF type() == 'expense' THEN {
-        transactionType() <- TransactionType.expense;
-    }ELSE IF type() == 'income' THEN {
-        transactionType() <- TransactionType.income;
-    }
-    ELSE {
-        returnError(501);
         RETURN;
     }
 
@@ -135,40 +111,19 @@ updateTransaction(FILE f) {
         RETURN;
     }
     
-    IF transactionType() == TransactionType.expense AND balance(account()) + amount(transaction()) < amount() THEN {
+    IF type(category()) == TransactionType.expense AND balance(account()) + amount(transaction()) < amount() THEN {
         returnError(502);
         RETURN;
     }
     
-    // here We have to revert money to that used account in creation.
-//    IF type(transaction()) == TransactionType.expense THEN {
-//        balance(account(transaction())) <- balance(account(transaction())) (+) amount(transaction());
-//    }ELSE IF type(transaction()) == TransactionType.income THEN {
-//        balance(account(transaction())) <- balance(account(transaction())) (-) amount(transaction());
-//    }
     
     amount(transaction()) <- amount();
     category(transaction()) <- category();
     account(transaction()) <- account();
     createdAt(transaction()) <- currentDateTime();
     user(transaction()) <- currentUser();
-    IF type() == 'expense' THEN {
-        type(transaction()) <- TransactionType.expense;
-    }ELSE IF type() == 'income' THEN {
-        type(transaction()) <- TransactionType.income;
-    }
+    type(transaction()) <- type(category());
     
-    
-
-//    IF transactionType() == TransactionType.expense THEN {
-//        IF balance(account()) < amount() THEN {
-//            returnError(502);
-//            RETURN;
-//        }
-//        balance(account()) <- balance(account()) (-) amount();
-//    }ELSE IF transactionType() == TransactionType.income THEN {
-//        balance(account()) <- balance(account()) (+) amount();
-//    }
 
 
     APPLY ;
