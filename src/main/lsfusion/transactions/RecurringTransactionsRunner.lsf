@@ -34,8 +34,6 @@ applyTransaction(RecurringTransactions r) {
             nextDate(r) <- sum(nextDate(r), 7);
         }ELSE IF frequency(r) == Frequency.monthly THEN {
             nextDate(r) <- sumMonth(nextDate(r), 1);
-        }ELSE IF frequency(r) == Frequency.yearly THEN {
-            nextDate(r) <- sumYear(nextDate(r), 1);
         }
     }
 }

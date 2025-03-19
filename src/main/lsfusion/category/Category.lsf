@@ -6,21 +6,20 @@ CLASS Category;
 
 name 'Название категории' = DATA STRING (Category);
 createdAt = DATA DATETIME (Category);
-user = DATA SelfUser (Category);
+user = DATA CustomUser (Category);
 isDeleted = DATA BOOLEAN (Category);
 type = DATA TransactionType(Category);
 
 
-findByName(STRING name, SelfUser s) = GROUP LAST Category c IF name(c) == name AND user(c) == s ORDER c;
-categoryById(LONG id, SelfUser s) = GROUP LAST Category c IF LONG(c AS Category) == id AND user(c) == s ORDER c;
+findByName(STRING name, CustomUser s) = GROUP LAST Category c IF name(c) == name AND user(c) == s ORDER c;
+categoryById(LONG id, CustomUser s) = GROUP LAST Category c IF LONG(c AS Category) == id AND user(c) == s ORDER c;
 id(Category c) = LONG (c AS Category);
 category = DATA LOCAL Category ();
 
 categoryType 'Тип категории' = DATA LOCAL TransactionType();
 
 CONSTRAINT Category c IS Category AND NOT type(c) MESSAGE 'Пожалуйста, выберите тип категории';
-CONSTRAINT SETCHANGED(type(Category c)) AND NOT user(c) AND role(currentUser() AS SelfUser) == Role.user 
-    MESSAGE 'Категории приложений не могут быть отредактированы';
+
 
 deleteCategoryForm(Category c) {
     IF NOT user(c) THEN {
@@ -45,7 +44,8 @@ FORM UserCategories 'Категории'
 
 FORM category 'Категория' 
     OBJECTS c = Category PANEL
-    PROPERTIES(c) name, type
+    PROPERTIES(c) name
+    PROPERTIES type 'тип' = typeName(type(c))
     EDIT Category OBJECT c
 ;
 

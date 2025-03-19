@@ -4,10 +4,22 @@ REQUIRE SelfUser, Category, UtilResponse;
 
 name = DATA LOCAL STRING ();
 id = DATA LOCAL LONG ();
+type = DATA LOCAL STRING ();
 
-addCategory(STRING p) {
+addCategory(FILE f) {
+    IMPORT JSON FROM f TO() name, type;
+    IF NOT name() OR NOT type() THEN {
+        returnError(405);
+        RETURN;
+    }
+
+    IF type() == 'expense' THEN {
+        transactionType() <- TransactionType.expense;
+    }ELSE IF type() == 'income' THEN {
+        transactionType() <- TransactionType.income;
+    }
     
-    category() <- findByName(p, currentUser());
+    category() <- findByName(name(), currentUser());
     IF category() THEN {
         IF NOT user(category()) OR user(category()) == currentUser() THEN {
             returnError(202);
@@ -16,11 +28,8 @@ addCategory(STRING p) {
     }
     
     NEW c = Category {
-        name(c) <- p;
-        IF role(currentUser() AS SelfUser) == Role.user THEN {
-            user(c) <- currentUser();
-        }
-        createdAt(c) <- currentDateTime();
+        name(c) <- name();
+        type(c) <- transactionType();
     }
     APPLY ;
     returnSuccessResponse();
@@ -39,7 +48,7 @@ deleteCategory(LONG p) {
 }@@api;
 
 updateCategory(FILE f) {
-    IMPORT JSON FROM f TO() name, id;
+    IMPORT JSON FROM f TO() name, id, type;
     
     category() <- categoryById(id(), currentUser());
     IF NOT category() THEN {

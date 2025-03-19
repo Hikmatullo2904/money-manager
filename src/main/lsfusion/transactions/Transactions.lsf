@@ -7,7 +7,7 @@ account  = DATA Account (Transaction);
 category = DATA Category (Transaction);
 amount 'Количество' = DATA LONG (Transaction);
 createdAt 'Создано в' = DATA DATETIME (Transaction);
-user = DATA SelfUser (Transaction);
+user = DATA CustomUser(Transaction);
 
 type = DATA TransactionType (Transaction);
 
@@ -23,14 +23,22 @@ CONSTRAINT Transaction t IS Transaction AND NOT (type(t) AND  account(t)
 //    MESSAGE 'На счете недостаточно средств для совершения этой транзакции.'; 
 
 FORM transactions 'Транзакции'
+    PROPERTIES account 'Название аккаунта' = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, 
+    typeT 'Тип транзакции' = typeName(transactionType())
+    
     OBJECTS t = Transaction
     PROPERTIES READONLY createdAt = createdAt(t), 
     name 'Название аккаунта' = name(account(t)), category 'Название категории' = name(category(t)), 
-    amount = amount(t), type 'Тип транзакции' = typeName(type(t))
+    amount = amount(t), type 'Тип транзакции' = typeName(type(t)) 
+        FOREGROUND IF type(t) == TransactionType.expense THEN #FF0000 ELSE #00FF00
     PROPERTIES(t) NEWSESSION NEW, EDIT, DELETE
     ORDERS createdAt DESC
     
     FILTERS user(t) == currentUser()
+    AND (NOT account() OR account(t) == account())
+    AND (NOT transactionType() OR type(t) == transactionType())
 ;
 
 FORM transaction 'Транзакция'
@@ -92,7 +100,7 @@ WHEN (CHANGED(account(Transaction t)) OR
 
 CLASS RecurringTransactions;
 description = DATA STRING (RecurringTransactions);
-user = DATA SelfUser (RecurringTransactions);
+user = DATA CustomUser (RecurringTransactions);
 category = DATA Category (RecurringTransactions) NONULL;
 amount = DATA LONG (RecurringTransactions) NONULL;
 account = DATA Account (RecurringTransactions) NONULL;
@@ -108,8 +116,7 @@ recurringTransactionById(LONG id) = GROUP LAST RecurringTransactions r IF id(r) 
 CLASS Frequency {
     daily 'Ежедневно',
     weekly 'Еженедельно', 
-    monthly 'Ежемесячно',
-    yearly 'Ежегодно'
+    monthly 'Ежемесячно'
 }
 
 frequency = DATA LOCAL Frequency();
@@ -120,8 +127,6 @@ getFrequency(STRING name) {
         frequency() <- Frequency.weekly;
     }ELSE IF name == 'monthly' THEN {
         frequency() <- Frequency.monthly;
-    }ELSE IF name == 'yearly' THEN {
-        frequency() <- Frequency.yearly;
     }
 }
 

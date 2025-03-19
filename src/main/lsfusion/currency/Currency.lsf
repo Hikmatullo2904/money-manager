@@ -3,48 +3,10 @@ MODULE Currency;
 
 CLASS Currency {
     uzs 'Uzbekistan (UZS)',
-    usd 'USA (US$)',
-    eur 'Eurozone (€)',
-    gbp 'United Kingdom (£)',
-    jpy 'Japan (¥)',
-    cny 'China (CNY)',
-    rub 'Russia (₽)',
-    inr 'India (₹)',
-    cad 'Canada (C$)',
-    aud 'Australia (A$)',
-    chf 'Switzerland (CHF)',
-    brl 'Brazil (R$)',
-    idr 'Indonesia (IDR)',
-    mxn 'Mexico (MX$)',
-    sgd 'Singapore (S$)',
-    hkd 'Hong Kong (HK$)',
-    krw 'South Korea (₩)',
-    zar 'South Africa (ZAR)',
-    try 'Turkey (₺)',
-    thb 'Thailand (THB)',
-    aed 'United Arab Emirates (AED)',
-    myr 'Malaysia (MYR)',
-    php 'Philippines (PHP)',
-    vnd 'Vietnam (VND)',
-    egp 'Egypt (EGP)',
-    pln 'Poland (PLN)',
-    sek 'Sweden (SEK)',
-    nok 'Norway (NOK)',
-    dkk 'Denmark (DKK)',
-    czk 'Czech Republic (CZK)',
-    huf 'Hungary (HUF)',
-    ron 'Romania (RON)',
-    bgn 'Bulgaria (BGN)',
-    cop 'Colombia (COP)',
-    ars 'Argentina (ARS)',
-    clp 'Chile (CLP)',
-    nzd 'New Zealand (NZ$)',
-    qar 'Qatar (QAR)',
-    sar 'Saudi Arabia (SAR)',
-    bdt 'Bangladesh (BDT)'
+    usd 'USA (US$)'
 }
 
-currency = DATA LOCAL Currency ();
+currency = DATA LOCAL Currency();
 id(Currency c) = LONG (c AS Currency);
 currencyById(LONG id) = GROUP LAST Currency c IF id(c) == id ORDER c;
 getCurrencyName(Currency c) = staticCaption(c);

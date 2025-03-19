@@ -1,17 +1,16 @@
 MODULE SelfUserApi;
 
-REQUIRE SelfUser, UtilResponse, Time, UtilString, Account, Currency;
+REQUIRE SelfUser, UtilResponse, Time, UtilString, Account;
 
 
 password = DATA LOCAL STRING ();
-email = DATA LOCAL STRING ();
-firstName = DATA LOCAL STRING ();
-lastName = DATA LOCAL STRING ();
-
-selfUser = DATA LOCAL SelfUser();
+email = DATA LOCAL STRING[400] ();
+firstName = DATA LOCAL STRING[100] ();
+lastName = DATA LOCAL STRING[100] ();
 
 isEmail(STRING email) = contains('@', email);
 
+customUser() = DATA LOCAL CustomUser();
 
 FORM regiterRequestForm
     PROPERTIES() password, email, firstName, lastName
@@ -19,17 +18,17 @@ FORM regiterRequestForm
 
 login(FILE f) {
     IMPORT JSON FROM f TO() password, email;
-    selfUser() <- findByEmail(email());
-    IF NOT selfUser() THEN {
+    customUser() <- findByEmail(email());
+    IF NOT customUser() THEN {
         returnError(102);
         RETURN ;
     }
     calculateBase64Hash('SHA-256', password());
-    IF NOT calculatedHash() == sha256Password(selfUser()) THEN {
+    IF NOT calculatedHash() == sha256Password(customUser()) THEN {
         returnError(102);
         RETURN ;
     }
-    generateAuthToken(login(selfUser()));
+    generateAuthToken(login(customUser()));
     EXPORT JSON FROM token = resultAuthToken();
 }@@noauth;
 
@@ -52,7 +51,7 @@ register(FILE f) {
     
     
     
-    NEW su = SelfUser {
+    NEW su = CustomUser {
         email(su) <- email();
         firstName(su) <- firstName();
         lastName(su) <- lastName();
@@ -60,15 +59,7 @@ register(FILE f) {
         createdAt(su) <- currentDateTime();
         status(su) <- SelfUserStatus.verified; 
         login(su) <- email();
-        selfUser() <- su;
-        role(su) <- Role.user;
-    }
-    
-    NEW a = Account {
-        name(a) <- 'Main';
-        currency(a) <- Currency.uzs;
-        balance(a) <- 0;
-        user(a) <- selfUser();
+        customUser() <- su;
     }
     APPLY ;
     
@@ -77,16 +68,16 @@ register(FILE f) {
 }@@noauth;
 
 FORM meResponseForm
-    OBJECTS data = SelfUser
-    PROPERTIES(data) firstName, lastName, email, createdAt
+    OBJECTS data = CustomUser
+    PROPERTIES(data) firstName, lastName, email
 ;
 
 me() {
-    selfUser() <- currentUser();
-    IF NOT selfUser() THEN {
+    customUser() <- currentUser();
+    IF NOT customUser() THEN {
         returnError(401);
         RETURN ;
     }
-    EXPORT meResponseForm OBJECTS data = selfUser() JSON;
+    EXPORT meResponseForm OBJECTS data = currentUser() JSON;
     
-}
+}@@api;

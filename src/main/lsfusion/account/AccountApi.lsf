@@ -15,7 +15,7 @@ addAccount(FILE f) {
         RETURN;
     }
     
-    IF findByName(name(), currentUser() AS SelfUser) THEN {
+    IF findByName(name(), currentUser() AS CustomUser) THEN {
         returnError(302);
         RETURN;
     }
@@ -26,7 +26,7 @@ addAccount(FILE f) {
     }
     
     IF NOT currencyId() THEN {
-        currency() <- currency(currentUser() AS SelfUser);
+        currency() <- currency(currentUser() AS CustomUser);
     }ELSE {
         currency() <- currencyById(currencyId());
     }
@@ -49,7 +49,7 @@ addAccount(FILE f) {
 updateAccount(FILE f) {
     IMPORT JSON FROM f TO() id, name, balance, currencyId;
 
-    account() <- accountById(id(), currentUser() AS SelfUser);
+    account() <- accountById(id(), currentUser() AS CustomUser);
     IF NOT account() THEN {
         returnError(304);
         RETURN;
@@ -60,7 +60,7 @@ updateAccount(FILE f) {
         returnError(405);
         RETURN;
     }
-    account() <- findByName(name(), currentUser() AS SelfUser);
+    account() <- findByName(name(), currentUser() AS CustomUser);
     IF account() AND account() != accountById(id()) THEN {
         returnError(302);
         RETURN;
@@ -72,7 +72,7 @@ updateAccount(FILE f) {
     }
     
     IF NOT currencyId() THEN {
-        currency() <- currency(currentUser() AS SelfUser);
+        currency() <- currency(currentUser() AS CustomUser);
     }ELSE {
         currency() <- currencyById(currencyId());
     }
@@ -86,7 +86,7 @@ updateAccount(FILE f) {
 }@@api;
 
 deleteAccount(LONG id) {
-    account() <- accountById(id, currentUser() AS SelfUser);
+    account() <- accountById(id, currentUser() AS CustomUser);
     IF NOT account() THEN {
         returnError(304);
         RETURN;
@@ -114,24 +114,23 @@ getAccounts() {
 accountFrom = DATA LOCAL LONG();
 accountTo = DATA LOCAL LONG();
 amount = DATA LOCAL LONG();
-exchangeRate = DATA LOCAL LONG();
 
 transferMoney(FILE f) {
-    IMPORT JSON FROM f TO() accountFrom, accountTo, amount, exchangeRate;
+    IMPORT JSON FROM f TO() accountFrom, accountTo, amount;
     IF NOT (accountFrom() AND accountTo() AND amount()) THEN {
         returnError(405);
         RETURN;
     }
     LOCAL sourceAccount = Account();
     LOCAL targetAccount = Account();
-    sourceAccount() <- accountById(accountFrom(), currentUser() AS SelfUser);
-    IF NOT sourceAccount() OR user(sourceAccount()) != currentUser() THEN {
+    sourceAccount() <- accountById(accountFrom(), currentUser() AS CustomUser);
+    IF NOT sourceAccount() THEN {
         returnError(304);
         RETURN;
     }
 
-    targetAccount() <- accountById(accountTo(), currentUser() AS SelfUser);
-    IF NOT targetAccount() OR user(targetAccount()) != currentUser() THEN {
+    targetAccount() <- accountById(accountTo(), currentUser() AS CustomUser);
+    IF NOT targetAccount() THEN {
         returnError(304);
         RETURN;
     }
@@ -141,20 +140,11 @@ transferMoney(FILE f) {
         RETURN ;
     }
     
-    LOCAL finalAmount = LONG ();
-    finalAmount() <- amount();
-    IF currency(targetAccount()) != currency(sourceAccount()) THEN {
-        IF NOT exchangeRate() THEN {
-            returnError(308);
-            RETURN;
-        }ELSE IF exchangeRate() <= 0 THEN {
-            returnError(309);
-            RETURN;
-        }
-        finalAmount() <- amount() * exchangeRate();
+    NEW t = Transers {
+        sourceAccount(t) <- sourceAccount();
+        targetAccount(t) <- targetAccount();
+        amount(t) <- amount();
     }
-    balance(sourceAccount()) <- balance(sourceAccount()) (-) amount();
-    balance(targetAccount()) <- balance(targetAccount()) (+) finalAmount();
     
     APPLY ;
     returnSuccessResponse();

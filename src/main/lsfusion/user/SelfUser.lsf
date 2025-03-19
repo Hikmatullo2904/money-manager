@@ -2,38 +2,22 @@ MODULE SelfUser;
 
 REQUIRE Authentication, Currency;
 
-CLASS SelfUser : CustomUser;
-firstName = DATA STRING (SelfUser);
-lastName = DATA STRING (SelfUser);
-createdAt = DATA DATETIME (SelfUser);
-activatedAt = DATA DATETIME (SelfUser);
-currency = DATA Currency (SelfUser);
-email = DATA STRING (SelfUser);
-
 CLASS SelfUserStatus {
     created 'Создан',
     verified 'Верифицирован',
     deleted 'Удален'
 }
 
-status = DATA SelfUserStatus (SelfUser);
-findByEmail(STRING  email) = GROUP LAST SelfUser su IF email(su) == email ORDER su;
+status = DATA SelfUserStatus (CustomUser);
+findByEmail(STRING  email) = GROUP LAST CustomUser su IF email(su) == email ORDER su;
 userEmail(STRING email) = email(findByEmail(email));
 
-CLASS Role {
-    admin 'Администратор',
-    user 'Пользователь'
-}
-role = DATA Role (SelfUser);
-roleName(Role role) = staticCaption(role);
-selfUser = DATA LOCAL SelfUser();
+index 'N%' (CustomUser s) = PARTITION SUM 1 IF s IS CustomUser ORDER s;
+currency = DATA Currency(CustomUser);
+createdAt = DATA DATETIME(CustomUser);
 
-index 'N%' (SelfUser s) = PARTITION SUM 1 IF s IS SelfUser ORDER s;
-
-
-FORM appUsers 'Пользователи приложения'
-    OBJECTS u = SelfUser
-    PROPERTIES(u) index, firstName, lastName, email
-    PROPERTIES r 'Роль' = roleName(role(u))
+FORM users 'Пользователи'
+    OBJECTS s = CustomUser
+    PROPERTIES(s) READONLY index, firstName, lastName, email, status, createdAt, currency
 ;
 

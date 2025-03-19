@@ -1,22 +1,116 @@
 MODULE IncomeExpenseReports;
 
-REQUIRE Transactions;
+REQUIRE Transactions, CurrencyConvertor;
 
+year 'Год' (DATETIME d)  = extractYear(d);
+month 'Месяц' (DATETIME d) = extractMonthNumber(toDate(d));
+
+account = DATA LOCAL Account();
+currency() = DATA LOCAL Currency();
+currencyName 'Валюта' = staticCaption(currency());
+
+totalAmountInSelectedCurrency(Transaction t) = round2(
+        CASE
+        WHEN currency(account(t)) == currency() THEN amount(t)
+        WHEN currency(account(t)) == Currency.usd AND currency() == Currency.uzs THEN totalDollarToSum(amount(t))
+        ELSE totalSumToDollar(amount(t))
+    );
+totalAmountInGivenCurrency(LONG amount, Account a) = round2(
+        CASE
+        WHEN currency(a) == currency() THEN amount
+        WHEN currency(a) == Currency.usd AND currency() == Currency.uzs THEN totalDollarToSum(amount)
+        ELSE totalSumToDollar(amount)
+    );
+calculateAmountBasedOnFrequency(RecurringTransactions r) = CASE 
+    WHEN frequency(r) == Frequency.daily THEN amount(r) * 30
+    WHEN frequency(r) == Frequency.weekly THEN amount(r) * 4
+    WHEN frequency(r) == Frequency.monthly THEN amount(r)
+;
+totalAmountRecurringTransaction(RecurringTransactions r) = round2(
+        CASE
+        WHEN currency(account(r)) == currency() THEN calculateAmountBasedOnFrequency(r)
+        WHEN currency(account(r)) == Currency.usd AND currency() == Currency.uzs THEN totalDollarToSum(calculateAmountBasedOnFrequency(r))
+        ELSE totalSumToDollar(calculateAmountBasedOnFrequency(r))  
+);
+
+
+FORM totalIncomeExpense 'Общий доход и расход'
+    
+    PROPERTIES account = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, currencyName()
+    
+    
+    //Pie chart
+    OBJECTS pc 'Pie Chart' = Transaction PIVOT 'Multiple Pie Chart' NOSETTINGS
+    PROPERTIES READONLY type = typeName(type(pc)) ROW, amount = totalAmountInSelectedCurrency(pc) MEASURE
+    FILTERS user(pc) == currentUser() AND (NOT account() OR account(pc) == account())
+
+    //Bar chart
+    OBJECTS bc 'Bar Chart' = Transaction PIVOT 'Bar Chart' NOSETTINGS
+    PROPERTIES READONLY typeBc 'Тип транзакции' = typeName(type(bc)) ROW, 
+        amountBc = totalAmountInSelectedCurrency(bc) MEASURE
+    FILTERS user(bc) == currentUser() AND (NOT account() OR account(bc) == account())
+
+    //Line chart
+    OBJECTS expense 'График расходов' = Transaction PIVOT 'Line Chart' NOSETTINGS
+    PROPERTIES READONLY monthExpense 'Месяц' = month(createdAt(expense)), yearExpense 'Год' = year(createdAt(expense)), 
+        amountExpense = totalAmountInSelectedCurrency(expense) MEASURE
+    PIVOT ROWS (monthExpense, yearExpense)
+    FILTERS user(expense) == currentUser() 
+        AND type(expense) == TransactionType.expense 
+        AND (NOT account() OR account(expense) == account())
+
+    OBJECTS income 'График доходов' = Transaction PIVOT 'Line Chart' NOSETTINGS
+    PROPERTIES READONLY monthIncome 'Месяц' = month(createdAt(income)), yearIncome 'Год' = year(createdAt(income)), 
+        amountIncome = totalAmountInSelectedCurrency(income) MEASURE
+    PIVOT ROWS (monthIncome, yearIncome)
+    FILTERS user(income) == currentUser() AND type(income) == TransactionType.income
+        AND (NOT account() OR account(income) == account())
+    
+    EVENTS ON INIT {
+        initCurrencyConvertor();
+        currency() <- Currency.uzs;
+    }
+    
+;
+
+DESIGN totalIncomeExpense {
+    OBJECTS {
+        NEW tabbedPanel {
+            fill = 1;
+            tabbed = TRUE;
+            MOVE BOX(pc);
+            MOVE BOX(bc);
+            NEW lineChart {
+                caption = 'Ежемесячный доход и расход';
+                MOVE BOX(income);
+                MOVE BOX(expense);
+            }
+        }
+    }
+}
+
+
+//?Income expense for period
 startDate 'Начало периода' = DATA LOCAL DATE();
 endDate 'Конец периода' = DATA LOCAL DATE();
+type 'тип' = DATA LOCAL TransactionType();
 
-calculateIncome() = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
-    AND user(t) == currentUser() 
+calculateIncome() = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF type(t) == TransactionType.income 
+    AND user(t) == currentUser()
+    AND (NOT account() OR account(t) == account())
     AND toDate(createdAt(t)) >= startDate() 
     AND toDate(createdAt(t)) <= endDate();
 
-calculateExpense() = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
-    AND user(t) == currentUser() 
+calculateExpense() = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF type(t) == TransactionType.expense 
+    AND user(t) == currentUser()
+    AND (NOT account() OR account(t) == account())
     AND toDate(createdAt(t)) >= startDate() 
     AND toDate(createdAt(t)) <= endDate();
 
-income 'Доход' () = OVERRIDE calculateIncome(), 0;
-expense 'Расход' () = OVERRIDE calculateExpense(), 0;
+income 'доход' () = OVERRIDE calculateIncome(), 0;
+expense 'расход' () = OVERRIDE calculateExpense(), 0;
 
 FORM incomeExpenseReportXLSX 'Отчет о доходах и расходах'
     PROPERTIES() income, expense
@@ -25,100 +119,56 @@ FORM incomeExpenseReportXLSX 'Отчет о доходах и расходах'
 downloadReport 'Скачать отчет' () {
     PRINT incomeExpenseReportXLSX XLSX;
 }
+value(STRING s) = CASE WHEN s = 'доход' THEN income() WHEN s = 'расход' THEN expense();
 
-FORM incomeExpenseReport 'Отчет о доходах и расходах'
-    PROPERTIES() startDate, endDate
-    PROPERTIES income() FOREGROUND #00FF00, expense() FOREGROUND #FF0000
-    PROPERTIES() downloadReport 
+FORM incomeExpenseReport 'Отчет о доходах и расходах периода'
+    PROPERTIES account = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, currencyName()
+    
+    PROPERTIES() startDate, endDate, downloadReport
+    OBJECTS s 'Pie Chart' = STRING PIVOT 'Multiple Pie Chart' NOSETTINGS
+    PROPERTIES value(s), column = VALUE(s)
+    FILTERS value(s)
+    PIVOT s ROWS column
+    
+    
+    //here we create line chart
+    OBJECTS t 'График расходов' = Transaction PIVOT 'Line Chart' NOSETTINGS
+    PROPERTIES READONLY date = toDate(createdAt(t)) ROW, amount = totalAmountInSelectedCurrency(t) MEASURE
+    PIVOT ROWS date
+    FILTERS user(t) == currentUser() AND type(t) == type()
+    AND toDate(createdAt(t)) >= startDate() AND toDate(createdAt(t)) <= endDate()
+    AND (NOT account() OR account(t) == account())
+    
     EVENTS ON INIT {
         startDate() <- subtract(currentDate(), 7);
         endDate() <- currentDate();
+        type() <- TransactionType.expense;
+        initCurrencyConvertor();
+        currency() <- Currency.uzs;
     }
 ;
 
 DESIGN incomeExpenseReport {
     OBJECTS {
-        NEW main {
+        NEW tabbedPanel {
             fill = 1;
-            NEW data {
-                horizontal = 1;
-                alignment = CENTER;
-                NEW d {
-                    fill = 1;
-                    alignment = CENTER;
-                    NEW sides {
-                        fill = 1;
-                        horizontal = 1;
-                        NEW left {
-                            fill = 1;
-                            MOVE PROPERTY(startDate());
-                            MOVE PROPERTY(income());
-                            marginRight = 10;
-                        }
-                        NEW right {
-                            fill = 1;
-                            MOVE PROPERTY(endDate());
-                            MOVE PROPERTY(expense());
-                        }
-                    }
-                    NEW button {
-                        fill = 1;
-                        alignment = CENTER;
-                        MOVE PROPERTY(downloadReport());
-                    } 
-                }
+            tabbed = TRUE;
+            NEW categoryStatistics {
+                caption = 'Отчет о доходах и расходах периода';
+                horizontal = TRUE;
+                MOVE BOX(s);
+                MOVE BOX(t);
             }
         }
     }
 }
 
-calculateIncomeCategory(Category c) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
-    AND user(t) == currentUser() 
-    AND toDate(createdAt(t)) >= startDate() 
-    AND toDate(createdAt(t)) <= endDate()
-    AND category(t) == c;
-
-calculateExpenseCategory(Category c) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
-    AND user(t) == currentUser() 
-    AND toDate(createdAt(t)) >= startDate() 
-    AND toDate(createdAt(t)) <= endDate()
-    AND category(t) == c;
-
-incomeCategory 'Доход' (Category c) = OVERRIDE calculateIncomeCategory(c), 0;
-expenseCategory 'Расход' (Category c) = OVERRIDE calculateExpenseCategory(c), 0;
-
-type 'тип' = DATA LOCAL TransactionType();
-
-FORM categoryStatisticsXLSX 'Статистика по категориям'
-    OBJECTS c = Category
-    PROPERTIES name 'Название категории' = name(c),
-        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00, 
-        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
-
-    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type()
-;
-
-downloadCategoryReport 'Скачать отчет' () {
-    PRINT categoryStatisticsXLSX XLSX;
-}
-
-FORM categoryStatistics 'Статистика по категориям'
-    PROPERTIES startDate(), endDate(), type 'Тип транзакции' = typeName(type())
-    OBJECTS c = Category
-    PROPERTIES name 'Название категории' = name(c),
-        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00, 
-        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
-    PROPERTIES() downloadCategoryReport
-    
-    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type() 
-    EVENTS ON INIT {
-        startDate() <- subtract(currentDate(), 7);
-        endDate() <- currentDate();
-        type() <- TransactionType.income;
-    }
-;
 
 
+
+//?Monthly statistics
 months = DATA LOCAL INTEGER(INTEGER);
 
 
@@ -131,17 +181,17 @@ fillMonths() {
     }
 }
 
-calculateIncomeMonth(INTEGER i) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.income 
+calculateIncomeMonth(INTEGER i) = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF type(t) == TransactionType.income 
     AND user(t) == currentUser() 
     AND extractMonthNumber(createdAt(t)) == i
-    AND extractYear(createdAt(t)) == currentYear()                                                                  
-    AND extractMonthNumber(createdAt(t)) == i;
+    AND extractYear(createdAt(t)) == currentYear()
+    AND (NOT account() OR account(t) == account());
 
-calculateExpenseMonth(INTEGER i) = GROUP SUM(amount(Transaction t)) IF type(t) == TransactionType.expense 
+calculateExpenseMonth(INTEGER i) = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF type(t) == TransactionType.expense 
     AND user(t) == currentUser() 
     AND extractMonthNumber(createdAt(t)) == i
-    AND extractYear(createdAt(t)) == currentYear()                                                                   
-    AND extractMonthNumber(createdAt(t)) == i;
+    AND extractYear(createdAt(t)) == currentYear()
+    AND (NOT account() OR account(t) == account());
 
 incomeMonth 'Доход' (INTEGER i) = OVERRIDE calculateIncomeMonth(i), 0;
 expenseMonth 'Расход' (INTEGER i) = OVERRIDE calculateExpenseMonth(i), 0;
@@ -160,29 +210,131 @@ monthName 'Месяц' (INTEGER i) = CASE
                             WHEN i == 11 THEN 'Ноябрь'
                             ELSE 'Декабрь';
 
-FORM monthlyStatistis 'Статистика по месяцам'
-    OBJECTS i = INTEGER
-    PROPERTIES i 'Номер месяца' = i+1, monthName 'Месяц' = monthName(months(i)), incomeMonth 'Доход' = incomeMonth(months(i)), expenseMonth 'Расход' = expenseMonth(months(i))
-    PROPERTIES difference 'Разница' = incomeMonth(months(i)) - expenseMonth(months(i))
-        FOREGROUND IF incomeMonth(months(i)) >= expenseMonth(months(i)) THEN #00FF00 ELSE #FF0000
-    FILTERS imported(i)
+
+FORM monthlyStatististicsBarChart 'Статистика по месяцам'
+
+    PROPERTIES account = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, currencyName()
     
+    OBJECTS i = INTEGER PIVOT 'Bar Chart' NOSETTINGS
+    PROPERTIES monthName 'Месяц' = monthName(months(i)) ROW ORDER DESC, 
+        incomeMonth 'Доход' = incomeMonth(months(i)) MEASURE, 
+        expenseMonth 'Расход' = expenseMonth(months(i)) MEASURE
+    
+    FILTERS imported(i)
+
     EVENTS ON INIT {
+        initCurrencyConvertor();
+        currency() <- Currency.uzs;
         fillMonths();
     }
 ;
 
-minIncomeInCurrentMonth() = GROUP SUM amount(RecurringTransactions r) IF user(r) == currentUser()
-    AND extractMonthNumber(nextDate(r)) == currentMonth()
-    AND extractYear(nextDate(r)) == currentYear()
-    AND type(r) == TransactionType.income;
 
-minExpenseInCurrentMonth() = GROUP SUM amount(RecurringTransactions r) IF user(r) == currentUser()
-    AND extractMonthNumber(nextDate(r)) == currentMonth()
-    AND extractYear(nextDate(r)) == currentYear()
-    AND type(r) == TransactionType.expense;
-
-FORM minExpenseAndIncomeInCurrentMonth 'Минимальный расход и доход в текущем месяце'
-    PROPERTIES minExpense 'Минимальный расход' = minExpenseInCurrentMonth(), 
-        minIncome 'Минимальный доход' = minIncomeInCurrentMonth();
+//?Min expense and income
+FORM minExpenseAndIncomeInCurrentMonthPieChart 'Минимальный расход и доход в текущем месяце'
+    PROPERTIES account = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, currencyName()
+    
+    OBJECTS r 'Минимальный расход и доход в текущем месяце' = RecurringTransactions
+    PIVOT 'Multiple Pie Chart' NOSETTINGS 
+    PROPERTIES READONLY type 'Тип' = typeName(type(r)) ROW, amount = totalAmountRecurringTransaction(r) MEASURE
+    FILTERS user(r) == currentUser()
+        AND extractMonthNumber(nextDate(r)) == currentMonth()
+        AND extractYear(nextDate(r)) == currentYear()
+        AND (NOT account() OR account(r) == account())
+    
+    EVENTS ON INIT {
+        initCurrencyConvertor();
+        currency() <- Currency.uzs;
+    }
 ;
+
+
+//?Category statistics
+calculateIncomeCategory(Category c) = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF
+     user(t) == currentUser()
+    AND toDate(createdAt(t)) >= startDate()
+    AND toDate(createdAt(t)) <= endDate()
+    AND category(t) == c
+    AND (NOT account() OR account(t) == account());
+
+calculateExpenseCategory(Category c) = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF 
+    user(t) == currentUser()
+    AND toDate(createdAt(t)) >= startDate()
+    AND toDate(createdAt(t)) <= endDate()
+    AND category(t) == c
+    AND (NOT account() OR account(t) == account());
+
+incomeCategory 'Доход' (Category c) = OVERRIDE calculateIncomeCategory(c), 0;
+expenseCategory 'Расход' (Category c) = OVERRIDE calculateExpenseCategory(c), 0;
+
+
+FORM categoryStatisticsXLSX 'Статистика по категориям'
+    OBJECTS c = Category
+    PROPERTIES name 'Название категории' = name(c),
+        incomeCategory(c) SHOWIF type(c) == TransactionType.income FOREGROUND #00FF00,
+        expenseCategory(c) SHOWIF type(c) == TransactionType.expense FOREGROUND #FF0000
+
+    FILTERS user(c) == currentUser()
+;
+
+downloadCategoryReport 'Скачать отчет за период' () {
+    PRINT categoryStatisticsXLSX XLSX;
+}
+
+
+FORM categoryStatisticsPieChart 'Статистика по категориям за период'
+
+    PROPERTIES account = name(account()) ON CHANGE {
+        DIALOG accounts OBJECTS a = account() CHANGE LIST name(a);
+    }, currencyName()
+    
+    PROPERTIES startDate = startDate(), endDate = endDate(), type 'Тип транзакции' = typeName(type())
+    OBJECTS c 'Table' = Category
+    PROPERTIES name 'Название категории' = name(c),
+        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00,
+        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
+    PROPERTIES() downloadCategoryReport
+    FILTERS user(c) == currentUser() AND type(c) == type()
+    
+    PROPERTIES() expense, income
+    
+    OBJECTS expense 'Расход' = Transaction PIVOT 'Multiple Pie Chart' NOSETTINGS
+    PROPERTIES READONLY eCN 'Название' = name(category(expense))  ROW, eA = totalAmountInSelectedCurrency(expense) MEASURE
+    FILTERS type(expense) == TransactionType.expense AND user(expense) == currentUser()
+    AND toDate(createdAt(expense)) >= startDate() AND toDate(createdAt(expense)) <= endDate()
+    AND (NOT account() OR account(expense) == account())
+    
+    OBJECTS income 'Доход' = Transaction PIVOT 'Multiple Pie Chart' NOSETTINGS
+    PROPERTIES READONLY iCN 'Название' = name(category(income)) ROW, iA = totalAmountInSelectedCurrency(income) MEASURE
+    FILTERS type(income) == TransactionType.income AND user(income) == currentUser()
+    AND toDate(createdAt(income)) >= startDate() AND toDate(createdAt(income)) <= endDate()
+    AND (NOT account() OR account(income) == account())
+
+    EVENTS ON INIT {
+        startDate() <- subtract(currentDate(), 7);
+        endDate() <- currentDate();
+        type() <- TransactionType.expense;
+        initCurrencyConvertor();
+        currency() <- Currency.uzs;
+    }
+;
+
+DESIGN categoryStatisticsPieChart {
+    OBJECTS {
+        NEW tabbedPanel {
+            fill = 1;
+            tabbed = TRUE;
+            MOVE BOX(c);
+            NEW categoryStatistics {
+                caption = 'Pie Chart';
+                horizontal = TRUE;
+                MOVE BOX(expense);
+                MOVE BOX(income);
+            }
+        }
+    }
+}
