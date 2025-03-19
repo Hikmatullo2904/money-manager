@@ -1,0 +1,47 @@
+MODULE CurrencyConvertor;
+
+REQUIRE Currency, Utils;
+
+rate = DATA LOCAL STRING(INTEGER);
+
+FORM mapToRate
+    OBJECTS value = INTEGER
+    PROPERTIES(value) rate EXTID 'Rate' 
+    FILTERS imported(value)
+;
+
+
+
+exchangeRate = DATA LOCAL DOUBLE();
+amountInSelectedCurrency = DATA LOCAL DOUBLE();
+dollarRate = DATA LOCAL DOUBLE();
+sumToDollarRate() = 1 / dollarRate();
+totalSumToDollar(LONG amount) = amount / dollarRate();
+totalDollarToSum(LONG amount) = dollarRate() * amount;
+
+fetchDollarRate() {
+    LOCAL getDollarRateUrl = STRING();
+    getDollarRateUrl() <- 'https://cbu.uz/oz/arkhiv-kursov-valyut/json/USD/';
+    LOCAL result = FILE();
+    EXTERNAL HTTP GET getDollarRateUrl() TO result;
+    IMPORT mapToRate JSON FROM result();
+    dollarRate() <- INTEGER(rate(0));
+}
+
+convertCurrency(LONG amount, Currency from, Currency to) {
+    fetchDollarRate();
+    IF from == Currency.usd THEN {
+        amountInSelectedCurrency() <- totalDollarToSum(amount);
+        exchangeRate() <- dollarRate();
+    }ELSE {
+        amountInSelectedCurrency() <- totalSumToDollar(amount);
+        exchangeRate() <- 1 / dollarRate();
+    }
+}
+
+initCurrencyConvertor() {
+    fetchDollarRate();
+}
+
+
+    

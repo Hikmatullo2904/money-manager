@@ -42,13 +42,21 @@ paths:
       description: "Добавляет новую категорию."
       security:
         - bearerAuth: []
-      parameters:
-        - name: p
-          in: query
-          required: true
-          schema:
-            type: string
-            example: "Milk"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Drink"
+                  required: true
+                type:
+                  type: string
+                  enum: ["income", "expense"]
+                  example: "income"
       responses:
         "200":
           description: "Успешное добавление категории"
@@ -100,6 +108,10 @@ paths:
                 name:
                   type: string
                   example: "Drink"
+                type:
+                  type: string
+                  enum: ["income", "expense"]
+                  example: "income"
       responses:
         "200":
           description: "Успешное обновление категории"
@@ -396,6 +408,60 @@ paths:
                   message:
                     type: string
                     example: "Аккаунт не найден"
+  /exec?action=trasferMoney:
+    get:
+      tags:
+        - "Аккаунты"
+      summary: "Перевести деньги"
+      description: "Переводит деньги между аккаунтами."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountFrom:
+                  type: number
+                  example: 2345
+                accountTo:
+                  type: number
+                  example: 2346
+                amount:
+                  type: number
+                  example: 1000
+      responses:
+        "200":
+          description: "Успешное добавление аккаунта"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "ОК"
+        "400":
+          description: "Ошибка запроса"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 304
+                  message:
+                    type: string
+                    example: "Аккаунт не найден"
   /exec?action=getCurrencies:
     get:
       tags:
@@ -434,31 +500,27 @@ paths:
       description: "Добавляет новую транзакцию."
       security:
         - bearerAuth: [ ]
-      parameters:
-        - name: amount
-          in: query
-          required: true
-          schema:
-            type: number
-            example: 40000
-        - name: type
-          in: query
-          required: true
-          schema:
-            type: string
-            example: "income"
-        - name: categoryId
-          in: query
-          required: true
-          schema:
-            type: integer
-            example: 7540
-        - name: accountId
-          in: query
-          required: true
-          schema:
-            type: integer
-            example: 8612
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountId:
+                  type: integer
+                  example: 7940
+                amount:
+                  type: number
+                  example: 100
+                categoryId:
+                  type: integer
+                  example: 1343
+                  required: true
+                type:
+                  type: string
+                  enum: ["income", "expense"]
+                  example: "income"
       responses:
         "200":
           description: "Успешное добавление транзакции"
@@ -841,7 +903,7 @@ paths:
                   type: string
                   example: "2025-03-07"
                 frequency:
-                  enum: ["daily", "weekly", "monthly", "yearly"]
+                  enum: ["daily", "weekly", "monthly"]
                   example: "daily"
       responses:
         "200":
@@ -919,7 +981,7 @@ paths:
                     type: string
                     example: "Повторяющаяся транзакция не найдена"
   /exec?action=getIncomeExpenseStatistics:
-    post:
+    get:
       tags:
         - "Статистика"
       summary: "Получить статистику доходов и расходов"
@@ -936,9 +998,19 @@ paths:
                 startDate:
                   type: string
                   example: "2025-03-03"
+                  required: true
                 endDate:
                   type: string
                   example: "2025-03-10"
+                  required: true
+                accountId:
+                  type: integer
+                  example: 8612
+                  description: "Конкретный идентификатор учетной записи для получения ее статистики"
+                currencyId:
+                  type: integer
+                  example: 122
+                  description: "Идентификатор валюты для получения суммы в этой валюте, по умолчанию — uzs."
       responses:
         "200":
           description: "Успешный ответ со статистикой"
@@ -978,6 +1050,21 @@ paths:
       description: "Возвращает статистику доходов и расходов по месяцам с января до текущего месяца."
       security:
         - bearerAuth: [ ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountId:
+                  type: integer
+                  example: 8612
+                  description: "Конкретный идентификатор учетной записи для получения ее статистики"
+                currencyId:
+                  type: integer
+                  example: 122
+                  description: "Идентификатор валюты для получения суммы в этой валюте, по умолчанию — uzs."
       responses:
         "200":
           description: "Успешный ответ со статистикой по месяцам"
@@ -1002,7 +1089,7 @@ paths:
                           example: 0
 
   /exec?action=getCategoryStatistics:
-    post:
+    get:
       tags:
         - "Статистика"
       summary: "Получить статистику по категориям"
@@ -1026,6 +1113,14 @@ paths:
                   type: string
                   enum: [ "income", "expense" ]
                   example: "expense"
+                accountId:
+                  type: integer
+                  example: 8612
+                  description: "Конкретный идентификатор учетной записи для получения ее статистики"
+                currencyId:
+                  type: integer
+                  example: 122
+                  description: "Идентификатор валюты для получения суммы в этой валюте, по умолчанию — uzs."
       responses:
         "200":
           description: "Успешный ответ со статистикой по категориям"
@@ -1070,6 +1165,21 @@ paths:
       description: "Возвращает минимально ожидаемый доход и расход на основе добавленных пользователем регулярных транзакций."
       security:
         - bearerAuth: [ ]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountId:
+                  type: integer
+                  example: 8612
+                  description: "Конкретный идентификатор учетной записи для получения ее статистики"
+                currencyId:
+                  type: integer
+                  example: 122
+                  description: "Идентификатор валюты для получения суммы в этой валюте, по умолчанию — uzs."
       responses:
         "200":
           description: "Успешный ответ с минимально ожидаемыми доходом и расходом"

@@ -2,7 +2,8 @@ MODULE IncomeExpenseReportApi;
 
 REQUIRE IncomeExpenseReports, UtilResponse;
 
-
+accountId = DATA LOCAL LONG();
+currencyId = DATA LOCAL LONG();
 
 FORM incomeExpenseReportResponse
     PROPERTIES() startDate, endDate
@@ -10,38 +11,32 @@ FORM incomeExpenseReportResponse
 ;
 
 getIncomeExpenseStatistics(FILE f) {
-    IMPORT JSON FROM f TO() startDate, endDate;
+    IMPORT JSON FROM f TO() startDate, endDate, accountId, currencyId;
     IF NOT startDate() OR NOT endDate() THEN {
         returnError(405);
         RETURN;
     }
+    
+    IncomeExpenseReports.account() <- accountById(accountId(), currentUser() AS CustomUser);
+    
+    IncomeExpenseReports.currency() <- currencyById(currencyId());
+    IF NOT IncomeExpenseReports.currency() THEN {
+        IncomeExpenseReports.currency() <- Currency.uzs;
+    }
+    
+    initCurrencyConvertor();
     EXPORT incomeExpenseReportResponse JSON;
 } @@api;
 
-FORM categoryStatisticsXLSX
-    OBJECTS c = Category
-    PROPERTIES name 'Название категории' = name(c),
-        incomeCategory(c) SHOWIF type() == TransactionType.income FOREGROUND #00FF00,
-        expenseCategory(c) SHOWIF type() == TransactionType.expense FOREGROUND #FF0000
 
-    FILTERS user(c) == currentUser() AND NOT isDeleted(c) AND type(c) == type()
-;
 
-downloadCategoryReportFile() {
-    PRINT categoryStatisticsXLSX XLSX TO exportFile;
-}@@api;
-
-dfg() {
-    PRINT categoryStatisticsXLSX XLSX TO exportFile;
-    EXPORT JSON FROM file = encodeBase64(exportFile());
-}
-
-calculateAmountCategory(Category c) = GROUP SUM(amount(Transaction t)) IF 
-    type(t) == transactionType()
-    AND user(t) == currentUser()
+calculateAmountCategory(Category c) = GROUP SUM(totalAmountInSelectedCurrency(Transaction t)) IF
+    user(t) == currentUser()
     AND toDate(createdAt(t)) >= startDate()
     AND toDate(createdAt(t)) <= endDate()
-    AND category(t) == c;
+    AND category(t) == c
+    AND (NOT IncomeExpenseReports.account() OR account(t) == IncomeExpenseReports.account())
+;
 
 amountInCategory(Category c) = OVERRIDE calculateAmountCategory(c), 0;
 
@@ -50,14 +45,14 @@ FORM categoryStatisticsResponse
     PROPERTIES name = name(data),
     amount = amountInCategory(data)
 
-    FILTERS user(data) == currentUser() AND NOT isDeleted(data) AND type(data) == transactionType()
+    FILTERS user(data) == currentUser() AND type(data) == transactionType()
 ;
 
 
 
 getCategoryStatistics(FILE f) {
     LOCAL type = STRING();
-    IMPORT JSON FROM f TO() startDate, endDate, type;
+    IMPORT JSON FROM f TO() startDate, endDate, type, accountId, currencyId;
     IF type() == 'expense' THEN {
         transactionType() <- TransactionType.expense;
     }ELSE IF type() == 'income' THEN {
@@ -67,23 +62,65 @@ getCategoryStatistics(FILE f) {
         returnError(405);
         RETURN;
     }
+    
+    IncomeExpenseReports.account() <- accountById(accountId(), currentUser() AS CustomUser);
+    
+    IncomeExpenseReports.currency() <- currencyById(currencyId());
+    IF NOT IncomeExpenseReports.currency() THEN {
+        IncomeExpenseReports.currency() <- Currency.uzs;
+    }
+    initCurrencyConvertor();
     EXPORT categoryStatisticsResponse JSON;
 } @@api;
 
 
 FORM monthlyStatistisResponse
     OBJECTS data = INTEGER
-    PROPERTIES month = monthName(months(data)), income = incomeMonth(months(data)), expense = expenseMonth(months(data))
+    PROPERTIES month = monthName(months(data)), 
+    income = incomeMonth(months(data)), 
+    expense = expenseMonth(months(data))
     FILTERS imported(data)
 ;
 
-getMonthlyStatistics() {
+getMonthlyStatistics(FILE f) {
+    IMPORT JSON FROM f TO() accountId, currencyId;
+    IncomeExpenseReports.account() <- accountById(accountId(), currentUser() AS CustomUser);
+    IncomeExpenseReports.currency() <- currencyById(currencyId());
+    IF NOT IncomeExpenseReports.currency() THEN {
+        IncomeExpenseReports.currency() <- Currency.uzs;
+    }
+    initCurrencyConvertor();
     fillMonths();
     EXPORT monthlyStatistisResponse JSON;
 } @@api;
 
+minIncomeInCurrentMonth() = GROUP SUM totalAmountRecurringTransaction(RecurringTransactions r) IF user(r) == currentUser()
+    AND extractMonthNumber(nextDate(r)) == currentMonth()
+    AND extractYear(nextDate(r)) == currentYear()
+    AND type(r) == TransactionType.income
+    AND (NOT IncomeExpenseReports.account() OR account(r) == IncomeExpenseReports.account());
 
-getMinExpenseAndIncomeInCurrentMonth() {
+minExpenseInCurrentMonth() = GROUP SUM totalAmountRecurringTransaction(RecurringTransactions r) IF 
+    user(r) == currentUser()
+    AND extractMonthNumber(nextDate(r)) == currentMonth()
+    AND extractYear(nextDate(r)) == currentYear()
+    AND type(r) == TransactionType.expense
+    AND (NOT IncomeExpenseReports.account() OR account(r) == IncomeExpenseReports.account());
+
+minExpense() = OVERRIDE minExpenseInCurrentMonth(), 0;
+minIncome() = OVERRIDE minIncomeInCurrentMonth(), 0;
+
+FORM minExpenseAndIncomeInCurrentMonth
+    PROPERTIES minExpense = minExpense(),
+        minIncome = minIncome();
+;
+getMinExpenseAndIncomeInCurrentMonth(FILE f) {
+    IMPORT JSON FROM f TO() currencyId, accountId;
+    IncomeExpenseReports.account() <- accountById(accountId(), currentUser() AS CustomUser);
+    IncomeExpenseReports.currency() <- currencyById(currencyId());
+    IF NOT IncomeExpenseReports.currency() THEN {
+        IncomeExpenseReports.currency() <- Currency.uzs;
+    }
     EXPORT minExpenseAndIncomeInCurrentMonth JSON;
 } @@api;
 

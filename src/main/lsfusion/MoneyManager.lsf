@@ -3,7 +3,7 @@ REQUIRE Account, Category, Transactions, Notification, IncomeExpenseReports, Sel
 
 NAVIGATOR {
     NEW FOLDER AppManagment 'Управление приложением' WINDOW toolbar {
-        NEW au = appUsers;
+        NEW au = users;
     }
     NEW FOLDER Account 'Счета' WINDOW toolbar{
         NEW accounts;
@@ -16,9 +16,10 @@ NAVIGATOR {
     }
     NEW notifications;
     NEW FOLDER Reports 'Отчеты и статистика' WINDOW toolbar {
+        NEW totalIncomeExpense;
         NEW incomeExpenseReport;
-        NEW categoryStatistics;
-        NEW monthlyStatistis;
-        NEW minExpenseAndIncomeInCurrentMonth;
+        NEW monthlyStatististicsBarChart;
+        NEW minExpenseAndIncomeInCurrentMonthPieChart;
+        NEW categoryStatisticsPieChart;
     }
 }

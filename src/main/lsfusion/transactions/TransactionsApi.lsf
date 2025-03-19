@@ -57,7 +57,7 @@ addTransaction(FILE f) {
         returnError(505);
         RETURN;
     }
-    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    account() <- accountById(accountId(), currentUser() AS CustomUser);
     IF NOT account() THEN {
         returnError(304);
         RETURN;
@@ -123,7 +123,7 @@ updateTransaction(FILE f) {
         returnError(505);
         RETURN;
     }
-    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    account() <- accountById(accountId(), currentUser() AS CustomUser);
     IF NOT account() THEN {
         returnError(304);
         RETURN;
@@ -220,7 +220,7 @@ addRecurringTransaction(FILE f) {
         returnError(505);
         RETURN;
     }
-    account() <- accountById(accountId(), currentUser() AS SelfUser);
+    account() <- accountById(accountId(), currentUser() AS CustomUser);
     IF NOT account() THEN {
         returnError(304);
         RETURN;
